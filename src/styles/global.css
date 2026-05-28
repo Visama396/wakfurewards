@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+body {
+    background: #091b24;
+    color: white;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+select, input, button {
+    color-scheme: dark;
+}
