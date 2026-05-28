@@ -32,6 +32,7 @@ const CLASS_ICONS = {
 
 const DUNGEON_ICONS = {
   Tejaroxores: "/cojonidas.webp",
+  "Or'Hodruin": "/saurhon.webp",
 };
 
 export default function App() {
@@ -81,6 +82,18 @@ export default function App() {
   async function deleteReward(id) {
     await supabase.from("wakfurewards").delete().eq("id", id);
     loadData();
+  }
+
+  async function resetRewards() {
+    if (
+      !window.confirm(
+        "¿Seguro que quieres reiniciar todas las recompensas del mes?",
+      )
+    )
+      return;
+    setRewards([]);
+    localStorage.setItem("wakfu_reset_token", "true");
+    await supabase.from("wakfurewards").delete().neq("id", 0);
   }
 
   async function updateStasis(id, val) {
@@ -173,11 +186,17 @@ export default function App() {
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
-        <div className="text-right">
+        <div className="flex items-center justify-end gap-4">
+          <button
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded"
+            onClick={resetRewards}
+          >
+            Resetear
+          </button>
           <span className="text-2xl font-bold text-yellow-400">
             {totalStasis}
           </span>
-          <span className="text-lg text-gray-400 ml-1">cofres</span>
+          <span className="text-lg text-gray-400">cofres</span>
         </div>
       </header>
 
