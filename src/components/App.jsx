@@ -301,19 +301,20 @@ export default function App() {
                             <DungeonIcon name={dungMap[r.dung]?.name} />
                             {dungMap[r.dung]?.name || `#${r.dung}`}
                           </td>
-                          <td className="py-1.5 px-2 text-center">
-                            <input
-                              type="number"
-                              min="1"
-                              max="15"
-                              defaultValue={r.stasis}
-                              onBlur={(e) => {
-                                const v = parseInt(e.target.value);
-                                if (v !== r.stasis) updateStasis(r.id, v);
-                              }}
-                              className="w-14 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-0.5"
-                            />
-                          </td>
+                           <td className="py-1.5 px-2 text-center">
+                             <select
+                               defaultValue={r.stasis}
+                               onBlur={(e) => {
+                                 const v = parseInt(e.target.value);
+                                 if (v !== r.stasis) updateStasis(r.id, v);
+                               }}
+                               className="w-14 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-0.5"
+                             >
+                               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                                 <option key={n} value={n}>{n}</option>
+                               ))}
+                             </select>
+                           </td>
                           <td className="py-1.5 pl-2 text-right">
                             <button
                               onClick={() => deleteReward(r.id)}
@@ -404,15 +405,16 @@ export default function App() {
 
             <div>
               <label className="block text-sm text-gray-400 mb-1">Stasis</label>
-              <input
-                type="number"
-                min="1"
-                max="15"
+              <select
                 value={addStasis}
-                onChange={(e) => setAddStasis(parseInt(e.target.value) || 1)}
+                onChange={(e) => setAddStasis(parseInt(e.target.value))}
                 required
                 className="w-full bg-[#163544] border border-gray-600 rounded px-3 py-2 text-sm"
-              />
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
