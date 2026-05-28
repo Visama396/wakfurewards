@@ -30,6 +30,10 @@ const CLASS_ICONS = {
   hiper: 19,
 };
 
+const DUNGEON_ICONS = {
+  Tejaroxores: "/cojonidas.webp",
+};
+
 export default function App() {
   const [characters, setCharacters] = useState([]);
   const [dungeons, setDungeons] = useState([]);
@@ -40,6 +44,7 @@ export default function App() {
   const [addChar, setAddChar] = useState("");
   const [addDung, setAddDung] = useState("");
   const [addStasis, setAddStasis] = useState(1);
+  const [playerFilter, setPlayerFilter] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -117,6 +122,11 @@ export default function App() {
       (!rewardMap[c.id] || rewardMap[c.id].length === 0),
   );
 
+  const inactivePlayers = [...new Set(inactives.map((c) => c.player))].sort();
+  const filteredInactives = playerFilter
+    ? inactives.filter((c) => c.player === playerFilter)
+    : inactives;
+
   const actives = sortedChars.filter(
     (c) => rewardMap[c.id] && rewardMap[c.id].length > 0,
   );
@@ -140,6 +150,21 @@ export default function App() {
     );
   }
 
+  function DungeonIcon({ name }) {
+    const src = DUNGEON_ICONS[name];
+    if (!src)
+      return (
+        <span className="size-6 inline-block rounded bg-gray-700 align-middle" />
+      );
+    return (
+      <img
+        src={src}
+        alt={name}
+        className="size-8 inline-block rounded align-middle"
+      />
+    );
+  }
+
   if (loading) {
     return <div className="p-8 text-center text-gray-400">Cargando...</div>;
   }
@@ -157,18 +182,37 @@ export default function App() {
       </header>
 
       <section className="bg-[#0d2733] rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <h2 className="text-lg font-semibold text-orange-300">
-            Pendientes ({inactives.length})
+            Pendientes ({filteredInactives.length})
           </h2>
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => setPlayerFilter(null)}
+              className={`text-xs px-2 py-0.5 rounded ${!playerFilter ? "bg-blue-600 text-white" : "bg-gray-600 text-gray-300 hover:bg-gray-500"}`}
+            >
+              Todos
+            </button>
+            {inactivePlayers.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPlayerFilter(p)}
+                className={`text-xs px-2 py-0.5 rounded ${playerFilter === p ? "bg-blue-600 text-white" : "bg-gray-600 text-gray-300 hover:bg-gray-500"}`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
-        {inactives.length === 0 ? (
+        {filteredInactives.length === 0 ? (
           <p className="text-gray-500 text-sm">
-            Todos han completado al menos una mazmorra este mes
+            {playerFilter
+              ? `${playerFilter} no tiene personajes pendientes`
+              : "Todos han completado al menos una mazmorra este mes"}
           </p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {inactives.map((c) => (
+            {filteredInactives.map((c) => (
               <div
                 key={c.id}
                 className="bg-[#163544] rounded px-3 py-2 flex items-center justify-between gap-2"
@@ -253,7 +297,8 @@ export default function App() {
                     <tbody>
                       {charRewards.map((r) => (
                         <tr key={r.id} className="border-b border-gray-700/50">
-                          <td className="py-1.5 pr-2">
+                          <td className="flex gap-2 items-center py-1.5 pr-2">
+                            <DungeonIcon name={dungMap[r.dung]?.name} />
                             {dungMap[r.dung]?.name || `#${r.dung}`}
                           </td>
                           <td className="py-1.5 px-2 text-center">
