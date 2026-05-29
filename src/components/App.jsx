@@ -230,7 +230,7 @@ export default function App() {
           }}
         >
           <h2 className="text-lg font-semibold text-green-300">
-            Completados
+            Clasificación Mazmorras
           </h2>
           <input
             type="text"

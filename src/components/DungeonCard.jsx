@@ -1,11 +1,9 @@
 import ClassIcon from "@/components/ClassIcon";
 import DungeonIcon from "@/components/DungeonIcon";
 import RoleBadge from "@/components/RoleBadge";
+import TooltipCell from "@/components/TooltipCell";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 // Tarjeta de mazmorra completada con lista de personajes y sus stasis
@@ -29,22 +27,15 @@ export default function DungeonCard({
     <TooltipProvider delayDuration={300}>
       <div className="bg-[#163544] rounded-lg p-3 shrink-0 min-w-72">
         <div className="flex items-center justify-between mb-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex items-center gap-2 cursor-default">
-                <DungeonIcon name={dungeon.name} />
-                <span className="font-semibold">{dungeon.name}</span>
-                <span className="text-yellow-400 font-bold">{dungTotal}</span>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
+          <TooltipCell
+            content={
               <div className="text-xs space-y-0.5">
                 {incompleteChars.length > 0 ? (
                   <>
                     <p className="font-medium">Faltan por hacer:</p>
                     {incompleteChars.map((c) => (
                       <p key={c.id}>
-                        {c.char} ({c.player})
+                        {c.char}
                       </p>
                     ))}
                   </>
@@ -52,8 +43,14 @@ export default function DungeonCard({
                   <p>Todos lo completaron</p>
                 )}
               </div>
-            </TooltipContent>
-          </Tooltip>
+            }
+          >
+            <span className="flex items-center gap-2 cursor-default">
+              <DungeonIcon name={dungeon.name} />
+              <span className="font-semibold">{dungeon.name}</span>
+              <span className="text-yellow-400 font-bold">{dungTotal}</span>
+            </span>
+          </TooltipCell>
           <button
             onClick={() => onAdd(dungeon.id)}
             className="text-xs bg-blue-600 hover:bg-blue-500 rounded px-2 py-1"
@@ -81,16 +78,13 @@ export default function DungeonCard({
                     {char && (
                       <ClassIcon cls={char.class} gender={char.gender} />
                     )}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="truncate max-w-28 cursor-default">
-                          {char ? char.char : `#${r.char}`}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">{char?.player}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <TooltipCell
+                      content={<p className="text-xs">{char?.player}</p>}
+                    >
+                      <span className="truncate max-w-28 cursor-default">
+                        {char ? char.char : `#${r.char}`}
+                      </span>
+                    </TooltipCell>
                     {char && <RoleBadge role={char.charrole} />}
                   </div>
                   <div className="flex items-center gap-2">
