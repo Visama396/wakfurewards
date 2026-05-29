@@ -1,5 +1,5 @@
-import ClassIcon from "./ClassIcon";
-import RoleBadge from "./RoleBadge";
+import ClassIcon from "@/components/ClassIcon";
+import RoleBadge from "@/components/RoleBadge";
 
 // Tarjeta de personaje pendiente con clase, rol y botón para añadir recompensa
 export default function CharacterCard({ character, onAdd }) {

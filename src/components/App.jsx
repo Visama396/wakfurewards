@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../utils/supabase";
-import ClassIcon from "./ClassIcon";
-import DungeonCard from "./DungeonCard";
-import CharacterCard from "./CharacterCard";
-import AddRewardModal from "./AddRewardModal";
-import FilterBar from "./FilterBar";
+import { supabase } from "@/utils/supabase";
+import ClassIcon from "@/components/ClassIcon";
+import DungeonCard from "@/components/DungeonCard";
+import CharacterCard from "@/components/CharacterCard";
+import AddRewardModal from "@/components/AddRewardModal";
+import FilterBar from "@/components/FilterBar";
 
 export default function App() {
   const [characters, setCharacters] = useState([]);
