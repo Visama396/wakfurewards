@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+// Cliente de Supabase para la base de datos de personajes, mazmorras y recompensas
 const supabaseUrl = import.meta.env.PUBLIC_VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_VITE_SUPABASE_PUBLISHABLE_KEY;
 

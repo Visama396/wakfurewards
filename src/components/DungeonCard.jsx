@@ -15,9 +15,10 @@ export default function DungeonCard({
   onDelete,
   onUpdateStasis,
 }) {
+  // Suma total de stasis de todas las recompensas de esta mazmorra
   const dungTotal = rewards.reduce((s, r) => s + r.stasis, 0);
 
-  // Personajes que no han completado esta mazmorra
+  // Personajes que no han completado esta mazmorra (excluyendo Padre Ausente)
   const completedCharIds = new Set(rewards.map((r) => r.char));
   const incompleteChars = Object.values(charMap).filter(
     (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",

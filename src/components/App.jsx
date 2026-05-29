@@ -6,6 +6,7 @@ import CharacterCard from "@/components/CharacterCard";
 import AddRewardModal from "@/components/AddRewardModal";
 import FilterBar from "@/components/FilterBar";
 
+// Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
   const [characters, setCharacters] = useState([]);
   const [dungeons, setDungeons] = useState([]);
@@ -68,7 +69,6 @@ export default function App() {
     )
       return;
     setRewards([]);
-    localStorage.setItem("wakfu_reset_token", "true");
     await supabase.from("wakfurewards").delete().neq("id", 0);
   }
 
