@@ -19,6 +19,7 @@ export default function App() {
   const [addStasis, setAddStasis] = useState(1);
   const [playerFilter, setPlayerFilter] = useState(null);
   const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
+  const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
 
   useEffect(() => {
     loadData();
@@ -129,10 +130,22 @@ export default function App() {
       (!rewardMap[c.id] || rewardMap[c.id].length === 0),
   );
 
-  const inactivePlayers = [...new Set(inactives.map((c) => c.player))].sort();
+  const inactivePlayers = [...new Set(characters.map((c) => c.player))].sort();
   const filteredInactives = playerFilter
-    ? inactives.filter((c) => c.player === playerFilter)
-    : inactives;
+    ? characters.filter((c) => c.player === playerFilter)
+    : characters;
+
+  const searchFilteredInactives = (
+    playerFilter
+      ? sortedChars.filter((c) => c.player === playerFilter)
+      : sortedChars
+  ).filter(
+    (c) =>
+      c.charrole !== "Padre Ausente" &&
+      (c?.char
+        ? c.char.toLowerCase().includes(searchCharacters.toLowerCase())
+        : false),
+  );
 
   const padres = sortedChars.filter((c) => c.charrole === "Padre Ausente");
 
@@ -193,11 +206,11 @@ export default function App() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4">
-        <section className="bg-[#0d2733] rounded-lg p-4">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch">
+        <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col h-0 min-h-full">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0 pr-4">
             <h2 className="text-lg font-semibold text-orange-300">
-              Pendientes ({filteredInactives.length})
+              Personajes ({searchFilteredInactives.length})
             </h2>
             <FilterBar
               players={inactivePlayers}
@@ -205,19 +218,34 @@ export default function App() {
               onFilter={setPlayerFilter}
             />
           </div>
-          {filteredInactives.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              {playerFilter
-                ? `${playerFilter} no tiene personajes pendientes`
-                : "Todos han completado al menos una mazmorra este mes"}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-2">
-              {filteredInactives.map((c) => (
-                <CharacterCard key={c.id} character={c} onAdd={handleAdd} />
-              ))}
-            </div>
-          )}
+
+          <div className="mb-3 shrink-0 pr-4">
+            <input
+              type="text"
+              placeholder="Buscar personaje por nombre..."
+              value={searchCharacters}
+              onChange={(e) => setSearchCharacters(e.target.value)}
+              className="w-full p-2 text-sm rounded bg-[#163a4a] text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:border-orange-300"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-4 vertical-scroll">
+            {searchFilteredInactives.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                {searchCharacters
+                  ? `No hay coincidencias para "${searchCharacters}"`
+                  : playerFilter
+                    ? `${playerFilter} no tiene personajes registrados`
+                    : "No hay personajes registrados en el sistema"}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {searchFilteredInactives.map((c) => (
+                  <CharacterCard key={c.id} character={c} onAdd={handleAdd} />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         <section
@@ -293,7 +321,6 @@ export default function App() {
         onDungChange={setAddDung}
         onStasisChange={setAddStasis}
       />
-
     </div>
   );
 }
