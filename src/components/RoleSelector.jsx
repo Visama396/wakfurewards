@@ -4,13 +4,13 @@ export default function RoleSelector({
   setRoleFilter,
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 horizontal-scroll">
+    <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 px-1 horizontal-scroll">
       <button
         onClick={() => setRoleFilter("")}
         className={`px-2.5 py-1 text-xs rounded transition-all border ${
           roleFilter === ""
-            ? "bg-orange-400 text-black font-medium scale-105 border-transparent"
-            : "bg-[#163a4a] text-gray-300 border-gray-700/40 hover:bg-[#1c495e]"
+            ? "bg-orange-400 text-black border-transparent scale-105 shadow-md font-semibold"
+            : "bg-orange-950/40 text-orange-300 border-orange-800/30 hover:bg-orange-900/30"
         }`}
       >
         Todos

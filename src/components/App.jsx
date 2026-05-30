@@ -9,6 +9,7 @@ import FilterBar from "@/components/FilterBar";
 import { Toaster } from "@/components/ui/sonner";
 import PadresAusentes from "@/components/PadresAusentes";
 import RoleSelector from "@/components/RoleSelector";
+import DiariesButton from "@/components/DiariesButton";
 
 // Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
@@ -279,9 +280,12 @@ export default function App() {
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
         <div className="flex items-center justify-end gap-4 flex-wrap">
-          <span className="text-sm text-gray-400">{countdown()}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">{countdown()}</span>
+            <DiariesButton />
+          </div>
           <button
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded"
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded text-sm"
             onClick={resetRewards}
           >
             Resetear
