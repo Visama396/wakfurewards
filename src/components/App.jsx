@@ -7,6 +7,8 @@ import CharacterCard from "@/components/CharacterCard";
 import AddRewardModal from "@/components/AddRewardModal";
 import FilterBar from "@/components/FilterBar";
 import { Toaster } from "@/components/ui/sonner";
+import PadresAusentes from "@/components/PadresAusentes";
+import RoleSelector from "@/components/RoleSelector";
 
 // Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
@@ -104,6 +106,29 @@ export default function App() {
     await loadData();
   }
 
+  async function togglePadreAusente(character) {
+    const nuevoRol =
+      character.charrole === "Padre Ausente" ? "xD" : "Padre Ausente";
+
+    const { error } = await supabase
+      .from("wakfuchars")
+      .update({ charrole: nuevoRol })
+      .eq("id", character.id);
+
+    if (error) {
+      toast.error("Error al cambiar el estado: " + error.message);
+      return;
+    }
+
+    toast.success(
+      nuevoRol === "Padre Ausente"
+        ? `${character.char} enviado a Padre Ausente`
+        : `${character.char} ha regresado a la lista activa`,
+    );
+
+    await loadData(); // Recarga los datos de Supabase para actualizar la pantalla
+  }
+
   // Calcula los días/horas restantes hasta fin de mes
   function countdown() {
     const now = new Date();
@@ -148,7 +173,23 @@ export default function App() {
       (!rewardMap[c.id] || rewardMap[c.id].length === 0),
   );
 
-  const inactivePlayers = [...new Set(characters.map((c) => c.player))].sort();
+  const inactivePlayers = [
+    ...new Set(
+      sortedChars
+        .filter((c) => c.charrole !== "Padre Ausente")
+        .map((c) => c.player),
+    ),
+  ].sort((a, b) => {
+    const ordenManual = ["Peballo", "Juanio", "Visama"];
+    const indexA = ordenManual.indexOf(a);
+    const indexB = ordenManual.indexOf(b);
+
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   const filteredInactives = playerFilter
     ? characters.filter((c) => c.player === playerFilter)
     : characters;
@@ -253,8 +294,8 @@ export default function App() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
-        <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full">
-          <div className="flex flex-col gap-2 mb-4 shrink-0 pr-4">
+        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col h-0 min-h-full">
+          <div className="flex flex-col gap-2 mb-4 shrink-0">
             <h2 className="text-lg font-semibold text-orange-300">
               Personajes ({searchFilteredInactives.length})
             </h2>
@@ -265,35 +306,15 @@ export default function App() {
                 onFilter={setPlayerFilter}
               />
 
-              <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 horizontal-scroll">
-                <button
-                  onClick={() => setRoleFilter("")}
-                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                    roleFilter === ""
-                      ? "bg-orange-400 text-black font-medium"
-                      : "bg-[#163a4a] text-gray-300 hover:bg-[#1c495e]"
-                  }`}
-                >
-                  Todos
-                </button>
-                {availableRoles.map((role) => (
-                  <button
-                    key={role}
-                    onClick={() => setRoleFilter(role)}
-                    className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                      roleFilter === role
-                        ? "bg-orange-400 text-black font-medium"
-                        : "bg-[#163a4a] text-gray-300 hover:bg-[#1c495e]"
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
+              <RoleSelector
+                availableRoles={availableRoles}
+                roleFilter={roleFilter}
+                setRoleFilter={setRoleFilter}
+              />
             </div>
           </div>
 
-          <div className="mb-3 shrink-0 pr-4">
+          <div className="mb-3 shrink-0">
             <input
               type="text"
               placeholder="Buscar personaje por nombre..."
@@ -303,7 +324,7 @@ export default function App() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-4 vertical-scroll">
+          <div className="flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
             {searchFilteredInactives.length === 0 ? (
               <p className="text-gray-500 text-sm">
                 {searchCharacters || roleFilter || playerFilter
@@ -313,7 +334,14 @@ export default function App() {
             ) : (
               <div className="grid grid-cols-1 gap-2">
                 {searchFilteredInactives.map((c) => (
-                  <CharacterCard key={c.id} character={c} onAdd={handleAdd} />
+                  <CharacterCard
+                    key={c.id}
+                    character={c}
+                    onAdd={handleAdd}
+                    dungeons={dungeons}
+                    rewardMap={rewardMap}
+                    onTogglePadre={togglePadreAusente}
+                  />
                 ))}
               </div>
             )}
@@ -361,24 +389,10 @@ export default function App() {
         </section>
       </div>
 
-      {padres.length > 0 && (
-        <section className="bg-[#0d2733] rounded-lg p-4 opacity-60">
-          <h2 className="text-lg font-semibold text-gray-400 mb-2">
-            Padre Ausente
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {padres.map((c) => (
-              <span
-                key={c.id}
-                className="text-sm text-gray-400 flex items-center gap-1"
-              >
-                <ClassIcon cls={c.class} gender={c.gender} />
-                {c.char} ({c.class})
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
+      <PadresAusentes
+        characters={sortedChars}
+        onTogglePadre={togglePadreAusente}
+      />
 
       <AddRewardModal
         show={showAdd}
