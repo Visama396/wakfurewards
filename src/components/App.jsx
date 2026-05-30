@@ -253,7 +253,7 @@ export default function App() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
-        <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col h-0 min-h-full">
+        <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col lg:h-0 lg:min-h-full">
           <div className="flex flex-col gap-2 mb-4 shrink-0 pr-4">
             <h2 className="text-lg font-semibold text-orange-300">
               Personajes ({searchFilteredInactives.length})
@@ -320,7 +320,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="bg-[#0d2733] rounded-lg p-4 flex flex-col h-0 min-h-full overflow-hidden">
+        <section className="bg-[#0d2733] rounded-lg p-4 flex flex-col lg:h-0 lg:min-h-full overflow-hidden">
           <h2 className="text-lg font-semibold text-green-300">
             Clasificación Mazmorras
           </h2>
