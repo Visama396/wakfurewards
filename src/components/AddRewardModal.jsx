@@ -1,3 +1,12 @@
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from "@/components/ui/combobox";
+
 // Modal para añadir una recompensa: selecciona personaje, mazmorra y stasis
 export default function AddRewardModal({
   show,
@@ -13,6 +22,9 @@ export default function AddRewardModal({
   onStasisChange,
 }) {
   if (!show) return null;
+
+  const selectedChar = characters.find((c) => c.id === parseInt(charValue)) || null;
+  const selectedDung = dungeons.find((d) => d.id === parseInt(dungValue)) || null;
 
   return (
     <div
@@ -30,36 +42,52 @@ export default function AddRewardModal({
           <label className="block text-sm text-gray-400 mb-1">
             Personaje
           </label>
-          <select
-            value={charValue}
-            onChange={(e) => onCharChange(e.target.value)}
+          <Combobox
+            items={characters}
+            value={selectedChar}
+            onValueChange={(item) => onCharChange(item ? item.id.toString() : "")}
+            itemToStringLabel={(item) =>
+              `${item.char} — ${item.class} (${item.charrole}) [${item.player}]`
+            }
+            itemToStringValue={(item) => item.id.toString()}
             required
-            className="w-full bg-[#163544] border border-gray-600 rounded px-3 py-2 text-sm"
           >
-            <option value="">Seleccionar...</option>
-            {characters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.char} — {c.class} ({c.charrole}) [{c.player}]
-              </option>
-            ))}
-          </select>
+            <ComboboxInput placeholder="Buscar personaje..." />
+            <ComboboxContent>
+              <ComboboxList>
+                {(item) => (
+                  <ComboboxItem key={item.id} value={item}>
+                    {item.char} — {item.class} ({item.charrole}) [{item.player}]
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+              <ComboboxEmpty>No encontrado</ComboboxEmpty>
+            </ComboboxContent>
+          </Combobox>
         </div>
 
         <div>
           <label className="block text-sm text-gray-400 mb-1">Mazmorra</label>
-          <select
-            value={dungValue}
-            onChange={(e) => onDungChange(e.target.value)}
+          <Combobox
+            items={dungeons}
+            value={selectedDung}
+            onValueChange={(item) => onDungChange(item ? item.id.toString() : "")}
+            itemToStringLabel={(item) => item.name}
+            itemToStringValue={(item) => item.id.toString()}
             required
-            className="w-full bg-[#163544] border border-gray-600 rounded px-3 py-2 text-sm"
           >
-            <option value="">Seleccionar...</option>
-            {dungeons.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+            <ComboboxInput placeholder="Buscar mazmorra..." />
+            <ComboboxContent>
+              <ComboboxList>
+                {(item) => (
+                  <ComboboxItem key={item.id} value={item}>
+                    {item.name}
+                  </ComboboxItem>
+                )}
+              </ComboboxList>
+              <ComboboxEmpty>No encontrado</ComboboxEmpty>
+            </ComboboxContent>
+          </Combobox>
         </div>
 
         <div>

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
 import ClassIcon from "@/components/ClassIcon";
 import DungeonCard from "@/components/DungeonCard";
 import CharacterCard from "@/components/CharacterCard";
 import AddRewardModal from "@/components/AddRewardModal";
 import FilterBar from "@/components/FilterBar";
+import { Toaster } from "@/components/ui/sonner";
 
 // Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
@@ -48,6 +50,12 @@ export default function App() {
       stasis: parseInt(addStasis),
     });
     if (!error) {
+      const char = charMap[addChar];
+      const dung = dungeons.find((d) => d.id === parseInt(addDung));
+      const sufijo = char?.gender === 1 ? "añadida" : "añadido";
+      toast.success(
+        `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
+      );
       setShowAdd(false);
       setAddChar("");
       setAddDung("");
@@ -58,8 +66,17 @@ export default function App() {
 
   // Elimina una recompensa por su ID
   async function deleteReward(id) {
+    const reward = rewards.find((r) => r.id === id);
+    const char = reward ? charMap[reward.char] : null;
+    const dungName = reward
+      ? dungeons.find((d) => d.id === reward.dung)?.name
+      : null;
     await supabase.from("wakfurewards").delete().eq("id", id);
     loadData();
+    if (char) {
+      const sufijo = char.gender === 1 ? "eliminada" : "eliminado";
+      toast.success(`${char.char} ${sufijo} de ${dungName}`);
+    }
   }
 
   // Reinicia todas las recompensas del mes
@@ -171,6 +188,24 @@ export default function App() {
 
   const modalChars = sortedChars.filter((c) => c.charrole !== "Padre Ausente");
 
+  // Añade directamente una recompensa desde el popover de la tarjeta de mazmorra
+  async function addDungeonReward(dungId, charId, stasis) {
+    const { error } = await supabase.from("wakfurewards").insert({
+      char: parseInt(charId),
+      dung: parseInt(dungId),
+      stasis: parseInt(stasis),
+    });
+    if (!error) {
+      const char = charMap[charId];
+      const dung = dungeons.find((d) => d.id === parseInt(dungId));
+      const sufijo = char?.gender === 1 ? "añadida" : "añadido";
+      toast.success(
+        `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
+      );
+      loadData();
+    }
+  }
+
   // Abre el modal con una mazmorra preseleccionada
   function handleAddForDungeon(dungeonId) {
     setAddChar("");
@@ -199,10 +234,10 @@ export default function App() {
   }
 
   return (
-    <div className="p-4 space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="p-4 space-y-6 flex flex-col min-h-screen">
+      <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-4 flex-wrap">
           <span className="text-sm text-gray-400">{countdown()}</span>
           <button
             className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded"
@@ -217,7 +252,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
         <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col h-0 min-h-full">
           <div className="flex flex-col gap-2 mb-4 shrink-0 pr-4">
             <h2 className="text-lg font-semibold text-orange-300">
@@ -285,15 +320,7 @@ export default function App() {
           </div>
         </section>
 
-        <section
-          className="bg-[#0d2733] rounded-lg p-4 overflow-x-auto min-w-0 horizontal-scroll"
-          onWheel={(e) => {
-            if (e.deltaY !== 0) {
-              e.currentTarget.scrollLeft += e.deltaY;
-              e.preventDefault();
-            }
-          }}
-        >
+        <section className="bg-[#0d2733] rounded-lg p-4 flex flex-col h-0 min-h-full overflow-hidden">
           <h2 className="text-lg font-semibold text-green-300">
             Clasificación Mazmorras
           </h2>
@@ -304,7 +331,15 @@ export default function App() {
             onChange={(e) => setDungeonFilter(e.target.value)}
             className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm"
           />
-          <div className="flex gap-4 pb-2">
+          <div
+            className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+                e.preventDefault();
+              }
+            }}
+          >
             {dungeons
               .filter(
                 (d) =>
@@ -317,7 +352,7 @@ export default function App() {
                   dungeon={d}
                   rewards={dungRewardMap[d.id]}
                   charMap={charMap}
-                  onAdd={handleAddForDungeon}
+                  onAdd={addDungeonReward}
                   onDelete={deleteReward}
                   onUpdateStasis={updateStasis}
                 />
@@ -358,6 +393,7 @@ export default function App() {
         onDungChange={setAddDung}
         onStasisChange={setAddStasis}
       />
+      <Toaster />
     </div>
   );
 }
