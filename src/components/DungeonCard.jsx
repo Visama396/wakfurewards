@@ -78,9 +78,7 @@ export default function DungeonCard({
           </TooltipCell>
           <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
-              <button
-                className="text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer text-black"
-              >
+              <button className="text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer text-black">
                 <PlusIcon />
               </button>
             </PopoverTrigger>
