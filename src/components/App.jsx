@@ -20,6 +20,7 @@ export default function App() {
   const [playerFilter, setPlayerFilter] = useState(null);
   const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
   const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
+  const [roleFilter, setRoleFilter] = useState(""); // Filtro para buscar personajes por rol
 
   useEffect(() => {
     loadData();
@@ -135,17 +136,27 @@ export default function App() {
     ? characters.filter((c) => c.player === playerFilter)
     : characters;
 
+  const availableRoles = [
+    ...new Set(
+      sortedChars
+        .filter((c) => c.charrole !== "Padre Ausente")
+        .map((c) => c.charrole),
+    ),
+  ]
+    .filter(Boolean)
+    .sort();
+
   const searchFilteredInactives = (
     playerFilter
       ? sortedChars.filter((c) => c.player === playerFilter)
       : sortedChars
-  ).filter(
-    (c) =>
-      c.charrole !== "Padre Ausente" &&
-      (c?.char
-        ? c.char.toLowerCase().includes(searchCharacters.toLowerCase())
-        : false),
-  );
+  ).filter((c) => {
+    const matchesRole = roleFilter ? c.charrole === roleFilter : true;
+    const matchesName = c?.char
+      ? c.char.toLowerCase().includes(searchCharacters.toLowerCase())
+      : false;
+    return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
+  });
 
   const padres = sortedChars.filter((c) => c.charrole === "Padre Ausente");
 
@@ -208,15 +219,43 @@ export default function App() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch">
         <section className="bg-[#0d2733] rounded-lg pl-4 pt-4 pb-4 pr-0 flex flex-col h-0 min-h-full">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 shrink-0 pr-4">
+          <div className="flex flex-col gap-2 mb-4 shrink-0 pr-4">
             <h2 className="text-lg font-semibold text-orange-300">
               Personajes ({searchFilteredInactives.length})
             </h2>
-            <FilterBar
-              players={inactivePlayers}
-              currentFilter={playerFilter}
-              onFilter={setPlayerFilter}
-            />
+            <div className="w-full flex flex-col gap-3">
+              <FilterBar
+                players={inactivePlayers}
+                currentFilter={playerFilter}
+                onFilter={setPlayerFilter}
+              />
+
+              <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 horizontal-scroll">
+                <button
+                  onClick={() => setRoleFilter("")}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    roleFilter === ""
+                      ? "bg-orange-400 text-black font-medium"
+                      : "bg-[#163a4a] text-gray-300 hover:bg-[#1c495e]"
+                  }`}
+                >
+                  Todos
+                </button>
+                {availableRoles.map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => setRoleFilter(role)}
+                    className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                      roleFilter === role
+                        ? "bg-orange-400 text-black font-medium"
+                        : "bg-[#163a4a] text-gray-300 hover:bg-[#1c495e]"
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="mb-3 shrink-0 pr-4">
@@ -232,11 +271,9 @@ export default function App() {
           <div className="flex-1 overflow-y-auto pr-4 vertical-scroll">
             {searchFilteredInactives.length === 0 ? (
               <p className="text-gray-500 text-sm">
-                {searchCharacters
-                  ? `No hay coincidencias para "${searchCharacters}"`
-                  : playerFilter
-                    ? `${playerFilter} no tiene personajes registrados`
-                    : "No hay personajes registrados en el sistema"}
+                {searchCharacters || roleFilter || playerFilter
+                  ? "No hay coincidencias para los filtros seleccionados"
+                  : "No hay personajes registrados en el sistema"}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-2">
