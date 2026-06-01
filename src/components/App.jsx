@@ -15,6 +15,7 @@ const SPREADSHEET_TO_APP = {
   "La Torre Mineral (lvl 200)": "Torre Mineral",
   "Cañón de Plaguepardos": "Plaguepardos",
   "Fábrica de Buhatrás": "Buhatrás",
+  "Tumba de Pandala": "Pandala",
   "Mazmorra Nievajas": "Nievajas",
   "Mazmorra Crustariscos": "Crustariscos",
   "Mazmorra Solgazanes": "Solgazanes",
