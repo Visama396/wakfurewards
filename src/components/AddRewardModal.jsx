@@ -110,13 +110,13 @@ export default function AddRewardModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+            className="px-4 py-2 text-sm text-red-400 hover:text-red-300"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 rounded font-medium"
+            className="px-4 py-2 text-sm bg-orange-400 hover:bg-orange-300 rounded font-medium text-black"
           >
             Guardar
           </button>

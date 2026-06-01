@@ -64,7 +64,7 @@ export default function CharacterCard({
 
         <button
           onClick={() => onAdd(character.id)}
-          className="shrink-0 text-xs bg-blue-600 hover:bg-blue-500 rounded px-2 py-1 cursor-pointer"
+          className="shrink-0 text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer text-black"
         >
           +Añadir
         </button>

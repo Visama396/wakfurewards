@@ -9,7 +9,7 @@ import FilterBar from "@/components/FilterBar";
 import { Toaster } from "@/components/ui/sonner";
 import PadresAusentes from "@/components/PadresAusentes";
 import RoleSelector from "@/components/RoleSelector";
-import DiariesButton from "@/components/DiariesButton";
+import DailiesButton from "@/components/DailiesButton";
 
 // Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
@@ -279,26 +279,28 @@ export default function App() {
     <div className="p-4 space-y-6 flex flex-col min-h-screen">
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
-        <div className="flex items-center justify-end gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">{countdown()}</span>
-            <DiariesButton />
+            <DailiesButton />
           </div>
-          <button
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded text-sm"
-            onClick={resetRewards}
-          >
-            Resetear
-          </button>
-          <span className="text-2xl font-bold text-yellow-400">
-            {totalStasis}
-          </span>
-          <span className="text-lg text-gray-400">cofres</span>
+          <div className="flex items-center gap-4">
+            <button
+              className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
+              onClick={resetRewards}
+            >
+              Resetear
+            </button>
+            <span className="text-2xl font-bold text-yellow-400">
+              {totalStasis}
+            </span>
+            <span className="text-lg text-gray-400">cofres</span>
+          </div>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
-        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col h-0 min-h-full">
+        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full">
           <div className="flex flex-col gap-2 mb-4 shrink-0">
             <h2 className="text-lg font-semibold text-orange-300">
               Personajes ({searchFilteredInactives.length})
@@ -361,7 +363,7 @@ export default function App() {
             placeholder="Filtrar mazmorra..."
             value={dungeonFilter}
             onChange={(e) => setDungeonFilter(e.target.value)}
-            className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm"
+            className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-300"
           />
           <div
             className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"

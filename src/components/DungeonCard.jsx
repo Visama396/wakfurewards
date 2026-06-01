@@ -59,7 +59,7 @@ export default function DungeonCard({
               <div className="text-xs space-y-0.5">
                 {incompleteChars.length > 0 ? (
                   <>
-                    <p className="font-medium">Faltan por hacer:</p>
+                    <p className="font-medium text-orange-300">Faltan por hacer:</p>
                     {incompleteChars.map((c) => (
                       <p key={c.id}>{c.char}</p>
                     ))}
@@ -72,7 +72,7 @@ export default function DungeonCard({
           >
             <span className="flex items-center gap-2 cursor-default">
               <DungeonIcon name={dungeon.name} />
-              <span className="font-semibold">{dungeon.name}</span>
+              <span className="font-semibold hover:text-orange-200 transition-colors">{dungeon.name}</span>
               <span className="text-yellow-500 font-bold">{dungTotal}</span>
             </span>
           </TooltipCell>
@@ -82,7 +82,7 @@ export default function DungeonCard({
                 <PlusIcon />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-64">
+            <PopoverContent align="end" className="w-64 bg-[#0d2733] border border-gray-600 text-white">
               <p className="text-sm font-medium mb-1">Añadir personaje</p>
               <Combobox
                 items={incompleteChars}
@@ -94,7 +94,7 @@ export default function DungeonCard({
                 itemToStringValue={(item) => item.id.toString()}
               >
                 <ComboboxInput placeholder="Buscar personaje..." />
-                <ComboboxContent>
+                <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">
                   <ComboboxList>
                     {(item) => (
                       <ComboboxItem key={item.id} value={item}>
@@ -121,7 +121,7 @@ export default function DungeonCard({
                 <button
                   onClick={handleSubmit}
                   disabled={!selectedChar}
-                  className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded px-3 py-1.5 cursor-pointer font-medium"
+                  className="text-xs bg-orange-400 hover:bg-orange-300 disabled:opacity-40 rounded px-3 py-1.5 cursor-pointer font-medium text-black"
                 >
                   Añadir
                 </button>
