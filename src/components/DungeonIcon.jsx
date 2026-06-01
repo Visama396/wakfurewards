@@ -9,7 +9,7 @@ export default function DungeonIcon({ name }) {
   const src = DUNGEON_ICONS[name];
   if (!src)
     return (
-      <span className="size-6 inline-block rounded bg-gray-700 align-middle" />
+      <span className="size-8 inline-block rounded bg-gray-700 align-middle" />
     );
   return (
     <img

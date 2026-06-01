@@ -1,7 +1,37 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
-import ClassIcon from "@/components/ClassIcon";
+
+const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
+const SPREADSHEET_SHEET = "[ES] Previsión";
+const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
+
+const SPREADSHEET_TO_APP = {
+  "Guarida de los Tejaroxores": "Tejaroxores",
+  "Volcán de Or'Hodruin": "Or'Hodruin",
+  "Pico del Monte Zinit": "Ogrest",
+  "Santuario de los Dragohuevos": "Dragohuevos",
+  "Cresta Helada": "Eternos",
+  "La Torre Mineral (lvl 200)": "Torre Mineral",
+  "Cañón de Plaguepardos": "Plaguepardos",
+  "Fábrica de Buhatrás": "Buhatrás",
+  "Mazmorra Nievajas": "Nievajas",
+  "Mazmorra Crustariscos": "Crustariscos",
+  "Mazmorra Solgazanes": "Solgazanes",
+  "Mazmorra Vandalienados": "Vandalienados",
+  "Mazmorra de los Plantiguardias": "Plantigrados",
+  "Mazmorra de los Güinos": "aaa Sumorsa",
+  "Mazmorra de los Escapatarazones": "Escapatrajos",
+  "Mazmorra de los Fitoformes": "Pitoformes",
+  "Mazmorra de los Demorribles": "Feos",
+  "Mazmorra de los Vaciantes": "Ar'mando",
+  "Mazmorra de los Idos": "Locos",
+  "Mazmorra de los Devastadores": "Muertos",
+  "Mazmorra Steamers": "Pechofríos",
+  "Mazmorra Pezgajosos Abisales": "Pegajosos",
+  Necromundo: "Muertohambres",
+};
+
 import DungeonCard from "@/components/DungeonCard";
 import CharacterCard from "@/components/CharacterCard";
 import AddRewardModal from "@/components/AddRewardModal";
@@ -26,9 +56,39 @@ export default function App() {
   const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
   const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
   const [roleFilter, setRoleFilter] = useState(""); // Filtro para buscar personajes por rol
+  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(
+    new Set(),
+  );
+  const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
 
   useEffect(() => {
+    async function fetchTodayDailies() {
+      const base = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SPREADSHEET_SHEET)}`;
+      try {
+        const [dailyRes, moduloxRes] = await Promise.all([
+          fetch(`${base}!D4:D19?key=${SPREADSHEET_API_KEY}`),
+          fetch(`${base}!D21:D25?key=${SPREADSHEET_API_KEY}`),
+        ]);
+        const dailyData = await dailyRes.json();
+        const moduloxData = await moduloxRes.json();
+        if (dailyData.values) {
+          const names = dailyData.values
+            .map((row) => SPREADSHEET_TO_APP[row[0]])
+            .filter(Boolean);
+          setHighlightedDungeonNames(new Set(names));
+        }
+        if (moduloxData.values) {
+          const names = moduloxData.values
+            .map((row) => SPREADSHEET_TO_APP[row[0]])
+            .filter(Boolean);
+          setModuloxDungeonNames(new Set(names));
+        }
+      } catch {
+        // spreadsheet fetch failed silently
+      }
+    }
     loadData();
+    fetchTodayDailies();
   }, []);
 
   // Carga todos los datos desde Supabase al iniciar
@@ -91,7 +151,7 @@ export default function App() {
     )
       return;
     setRewards([]);
-    await supabase.from("wakfurewards").delete().neq("id", 0);
+    await supabase.from("wakfurewards").delete().gt("id", 0);
   }
 
   // Actualiza el stasis de una recompensa existente
@@ -147,11 +207,6 @@ export default function App() {
     rewardMap[r.char].push(r);
   });
 
-  const dungMap = {};
-  dungeons.forEach((d) => {
-    dungMap[d.id] = d;
-  });
-
   const charMap = {};
   characters.forEach((c) => {
     charMap[c.id] = c;
@@ -167,12 +222,6 @@ export default function App() {
     if (a.player !== b.player) return a.player.localeCompare(b.player);
     return a.char.localeCompare(b.char);
   });
-
-  const inactives = sortedChars.filter(
-    (c) =>
-      c.charrole !== "Padre Ausente" &&
-      (!rewardMap[c.id] || rewardMap[c.id].length === 0),
-  );
 
   const inactivePlayers = [
     ...new Set(
@@ -190,10 +239,6 @@ export default function App() {
     if (indexB !== -1) return 1;
     return a.localeCompare(b);
   });
-
-  const filteredInactives = playerFilter
-    ? characters.filter((c) => c.player === playerFilter)
-    : characters;
 
   const availableRoles = [
     ...new Set(
@@ -216,8 +261,6 @@ export default function App() {
       : false;
     return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
   });
-
-  const padres = sortedChars.filter((c) => c.charrole === "Padre Ausente");
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
@@ -248,13 +291,6 @@ export default function App() {
     }
   }
 
-  // Abre el modal con una mazmorra preseleccionada
-  function handleAddForDungeon(dungeonId) {
-    setAddChar("");
-    setAddDung(String(dungeonId));
-    setShowAdd(true);
-  }
-
   function handleCharChange(charId) {
     setAddChar(charId);
   }
@@ -282,7 +318,10 @@ export default function App() {
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">{countdown()}</span>
-            <DailiesButton />
+            <DailiesButton
+              dailyDungeons={highlightedDungeonNames}
+              moduloxDungeons={moduloxDungeonNames}
+            />
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -389,6 +428,8 @@ export default function App() {
                   onAdd={addDungeonReward}
                   onDelete={deleteReward}
                   onUpdateStasis={updateStasis}
+                  highlightedDungeonNames={highlightedDungeonNames}
+                  moduloxDungeonNames={moduloxDungeonNames}
                 />
               ))}
           </div>
@@ -412,6 +453,8 @@ export default function App() {
         onCharChange={handleCharChange}
         onDungChange={setAddDung}
         onStasisChange={setAddStasis}
+        highlightedDungeonNames={highlightedDungeonNames}
+        moduloxDungeonNames={moduloxDungeonNames}
       />
       <Toaster />
     </div>
