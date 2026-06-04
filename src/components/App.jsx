@@ -13,7 +13,7 @@ const SPREADSHEET_TO_APP = {
   "Santuario de los Dragohuevos": "Dragohuevos",
   "Cresta Helada": "Eternos",
   "La Torre Mineral (lvl 200)": "Torre Mineral",
-  "Cañón de Plaguepardos": "Plaguepardos",
+  "Cañón de los Plaguepardos": "Plaguepardos",
   "Fábrica de Buhatrás": "Buhatrás",
   "Tumba de Pandala": "Pandala",
   "Mazmorra Nievajas": "Nievajas",
