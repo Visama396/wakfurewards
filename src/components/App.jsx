@@ -1,7 +1,38 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
-import ClassIcon from "@/components/ClassIcon";
+
+const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
+const SPREADSHEET_SHEET = "[ES] Previsión";
+const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
+
+const SPREADSHEET_TO_APP = {
+  "Guarida de los Tejaroxores": "Tejaroxores",
+  "Volcán de Or'Hodruin": "Or'Hodruin",
+  "Pico del Monte Zinit": "Ogrest",
+  "Santuario de los Dragohuevos": "Dragohuevos",
+  "Cresta Helada": "Eternos",
+  "La Torre Mineral (lvl 200)": "Torre Mineral",
+  "Cañón de los Plaguepardos": "Plaguepardos",
+  "Fábrica de Buhatrás": "Buhatrás",
+  "Tumba de Pandala": "Pandala",
+  "Mazmorra Nievajas": "Nievajas",
+  "Mazmorra Crustariscos": "Crustariscos",
+  "Mazmorra Solgazanes": "Solgazanes",
+  "Mazmorra Vandalienados": "Vandalienados",
+  "Mazmorra de los Plantiguardias": "Plantigrados",
+  "Mazmorra de los Güinos": "aaa Sumorsa",
+  "Mazmorra de los Escapatarazones": "Escapatrajos",
+  "Mazmorra de los Fitoformes": "Pitoformes",
+  "Mazmorra de los Demorribles": "Feos",
+  "Mazmorra de los Vaciantes": "Ar'mando",
+  "Mazmorra de los Idos": "Locos",
+  "Mazmorra de los Devastadores": "Muertos",
+  "Mazmorra Steamers": "Pechofríos",
+  "Mazmorra Pezgajosos Abisales": "Pegajosos",
+  Necromundo: "Muertohambres",
+};
+
 import DungeonCard from "@/components/DungeonCard";
 import CharacterCard from "@/components/CharacterCard";
 import AddRewardModal from "@/components/AddRewardModal";
@@ -9,7 +40,7 @@ import FilterBar from "@/components/FilterBar";
 import { Toaster } from "@/components/ui/sonner";
 import PadresAusentes from "@/components/PadresAusentes";
 import RoleSelector from "@/components/RoleSelector";
-import DiariesButton from "@/components/DiariesButton";
+import DailiesButton from "@/components/DailiesButton";
 
 // Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
@@ -26,9 +57,39 @@ export default function App() {
   const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
   const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
   const [roleFilter, setRoleFilter] = useState(""); // Filtro para buscar personajes por rol
+  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(
+    new Set(),
+  );
+  const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
 
   useEffect(() => {
+    async function fetchTodayDailies() {
+      const base = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SPREADSHEET_SHEET)}`;
+      try {
+        const [dailyRes, moduloxRes] = await Promise.all([
+          fetch(`${base}!D4:D19?key=${SPREADSHEET_API_KEY}`),
+          fetch(`${base}!D21:D25?key=${SPREADSHEET_API_KEY}`),
+        ]);
+        const dailyData = await dailyRes.json();
+        const moduloxData = await moduloxRes.json();
+        if (dailyData.values) {
+          const names = dailyData.values
+            .map((row) => SPREADSHEET_TO_APP[row[0]])
+            .filter(Boolean);
+          setHighlightedDungeonNames(new Set(names));
+        }
+        if (moduloxData.values) {
+          const names = moduloxData.values
+            .map((row) => SPREADSHEET_TO_APP[row[0]])
+            .filter(Boolean);
+          setModuloxDungeonNames(new Set(names));
+        }
+      } catch {
+        // spreadsheet fetch failed silently
+      }
+    }
     loadData();
+    fetchTodayDailies();
   }, []);
 
   // Carga todos los datos desde Supabase al iniciar
@@ -91,7 +152,7 @@ export default function App() {
     )
       return;
     setRewards([]);
-    await supabase.from("wakfurewards").delete().neq("id", 0);
+    await supabase.from("wakfurewards").delete().gt("id", 0);
   }
 
   // Actualiza el stasis de una recompensa existente
@@ -147,11 +208,6 @@ export default function App() {
     rewardMap[r.char].push(r);
   });
 
-  const dungMap = {};
-  dungeons.forEach((d) => {
-    dungMap[d.id] = d;
-  });
-
   const charMap = {};
   characters.forEach((c) => {
     charMap[c.id] = c;
@@ -167,12 +223,6 @@ export default function App() {
     if (a.player !== b.player) return a.player.localeCompare(b.player);
     return a.char.localeCompare(b.char);
   });
-
-  const inactives = sortedChars.filter(
-    (c) =>
-      c.charrole !== "Padre Ausente" &&
-      (!rewardMap[c.id] || rewardMap[c.id].length === 0),
-  );
 
   const inactivePlayers = [
     ...new Set(
@@ -190,10 +240,6 @@ export default function App() {
     if (indexB !== -1) return 1;
     return a.localeCompare(b);
   });
-
-  const filteredInactives = playerFilter
-    ? characters.filter((c) => c.player === playerFilter)
-    : characters;
 
   const availableRoles = [
     ...new Set(
@@ -216,8 +262,6 @@ export default function App() {
       : false;
     return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
   });
-
-  const padres = sortedChars.filter((c) => c.charrole === "Padre Ausente");
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
@@ -248,13 +292,6 @@ export default function App() {
     }
   }
 
-  // Abre el modal con una mazmorra preseleccionada
-  function handleAddForDungeon(dungeonId) {
-    setAddChar("");
-    setAddDung(String(dungeonId));
-    setShowAdd(true);
-  }
-
   function handleCharChange(charId) {
     setAddChar(charId);
   }
@@ -279,26 +316,31 @@ export default function App() {
     <div className="p-4 space-y-6 flex flex-col min-h-screen">
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
-        <div className="flex items-center justify-end gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">{countdown()}</span>
-            <DiariesButton />
+            <DailiesButton
+              dailyDungeons={highlightedDungeonNames}
+              moduloxDungeons={moduloxDungeonNames}
+            />
           </div>
-          <button
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded text-sm"
-            onClick={resetRewards}
-          >
-            Resetear
-          </button>
-          <span className="text-2xl font-bold text-yellow-400">
-            {totalStasis}
-          </span>
-          <span className="text-lg text-gray-400">cofres</span>
+          <div className="flex items-center gap-4">
+            <button
+              className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
+              onClick={resetRewards}
+            >
+              Resetear
+            </button>
+            <span className="text-2xl font-bold text-yellow-400">
+              {totalStasis}
+            </span>
+            <span className="text-lg text-gray-400">cofres</span>
+          </div>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
-        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col h-0 min-h-full">
+        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full">
           <div className="flex flex-col gap-2 mb-4 shrink-0">
             <h2 className="text-lg font-semibold text-orange-300">
               Personajes ({searchFilteredInactives.length})
@@ -361,7 +403,7 @@ export default function App() {
             placeholder="Filtrar mazmorra..."
             value={dungeonFilter}
             onChange={(e) => setDungeonFilter(e.target.value)}
-            className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm"
+            className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-300"
           />
           <div
             className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
@@ -387,6 +429,8 @@ export default function App() {
                   onAdd={addDungeonReward}
                   onDelete={deleteReward}
                   onUpdateStasis={updateStasis}
+                  highlightedDungeonNames={highlightedDungeonNames}
+                  moduloxDungeonNames={moduloxDungeonNames}
                 />
               ))}
           </div>
@@ -410,6 +454,8 @@ export default function App() {
         onCharChange={handleCharChange}
         onDungChange={setAddDung}
         onStasisChange={setAddStasis}
+        highlightedDungeonNames={highlightedDungeonNames}
+        moduloxDungeonNames={moduloxDungeonNames}
       />
       <Toaster />
     </div>
