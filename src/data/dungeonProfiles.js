@@ -14,7 +14,7 @@ const DEFAULT_PROFILE = {
 // teamSize: 6 para mazmorras de equipo completo, 3 para mazmorras pequeñas.
 export const DUNGEON_PROFILES = {
   // Castiga armadura (Feca) y berserk (Sacro)
-  tejaroxores: {
+  cojonidas: {
     classScores: { feca: -3, sacro: -3, eni: 2, sram: 2 },
     roleMinima: { Support: 2, CaC: 1, DaD: 1 },
     explanation: "Castiga armadura (Feca) y berserk (Sacro)",
@@ -56,6 +56,126 @@ export const DUNGEON_PROFILES = {
     roleMinima: { Support: 2 },
     explanation: "Mazmorra para 3 personas: 2 Supports y 1 flexible",
     teamSize: 3,
+  },
+  aaasumorsa: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  armando: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  crustariscos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  dragohuevos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  escapatrajos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  eternos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  feos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  locos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  muertos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  muertohambres: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  nievajas: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  ogrest: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  pechofrios: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  pegajosos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  pitoformes: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  plaguepardos: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  plantigrados: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  senordelallama: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  solgazanes: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
+  },
+  vandalienados: {
+    classScores: {},
+    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    explanation: "",
+    teamSize: 6,
   },
 };
 

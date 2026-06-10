@@ -16,7 +16,7 @@ const ELEMENT_COLORS = {
 };
 
 export const SPELLS = {
-  tejaroxores: {
+  cojonidas: {
     garras: {
       nombre: "Garras",
       element: "Aire",
@@ -65,6 +65,30 @@ export const SPELLS = {
       `,
     },
   },
+  aaasumorsa: {},
+  armando: {},
+  buhatras: {},
+  crustariscos: {},
+  dragohuevos: {},
+  escapatrajos: {},
+  eternos: {},
+  feos: {},
+  locos: {},
+  muertos: {},
+  muertohambres: {},
+  necromundo: {},
+  nievajas: {},
+  ogrest: {},
+  pandala: {},
+  pechofrios: {},
+  pegajosos: {},
+  pitoformes: {},
+  plaguepardos: {},
+  plantigrados: {},
+  senordelallama: {},
+  solgazanes: {},
+  torremineral: {},
+  vandalienados: {},
 };
 
 // Reemplaza <<Nombre>> por un span con data-atributos.
@@ -94,7 +118,7 @@ function injectSpellTooltips(html, dungeonKey) {
 
 // Guías de mazmorras en formato HTML (sin processar, con <<Hechizo>>).
 const RAW_GUIDES = {
-  tejaroxores: `
+  cojonidas: `
     <div class="flex flex-col-reverse sm:flex-row gap-3 mb-3">
       <video src="/guides/tejonidasfase1.mp4" autoplay loop muted playsinline class="rounded max-w-full sm:w-2/5 sm:max-w-[300px] shrink-0"></video>
       <div>
@@ -109,6 +133,30 @@ const RAW_GUIDES = {
       </div>
     </div>
   `,
+  aaasumorsa: "",
+  armando: "",
+  buhatras: "",
+  crustariscos: "",
+  dragohuevos: "",
+  escapatrajos: "",
+  eternos: "",
+  feos: "",
+  locos: "",
+  muertos: "",
+  muertohambres: "",
+  necromundo: "",
+  nievajas: "",
+  ogrest: "",
+  pandala: "",
+  pechofrios: "",
+  pegajosos: "",
+  pitoformes: "",
+  plaguepardos: "",
+  plantigrados: "",
+  senordelallama: "",
+  solgazanes: "",
+  torremineral: "",
+  vandalienados: "",
 };
 
 // Normaliza el nombre igual que en dungeonProfiles para buscar la guía

@@ -7,11 +7,11 @@ const SPREADSHEET_SHEET = "[ES] Previsión";
 const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
 
 const SPREADSHEET_TO_APP = {
-  "Guarida de los Tejaroxores": "Tejaroxores",
-  "Volcán de Or'Hodruin": "Or'Hodruin",
-  "Pico del Monte Zinit": "Ogrest",
+  "Guarida de los Tejaroxores": "Cojonidas 🦡",
+  "Volcán Or'Hodruin": "Señor de la Llama 🦙",
+  "Pico del Monte Zinit": "Ogrest 🥲",
   "Santuario de los Dragohuevos": "Dragohuevos",
-  "Cresta Helada": "Eternos",
+  "Cresta Helada": "Eternos ☁️",
   "La Torre Mineral (lvl 200)": "Torre Mineral",
   "Cañón de los Plaguepardos": "Plaguepardos",
   "Fábrica de Buhatrás": "Buhatrás",
