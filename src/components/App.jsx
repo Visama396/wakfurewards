@@ -67,6 +67,7 @@ export default function App() {
     const el = scrollRef.current;
     if (!el) return;
     function onWheel(e) {
+      if (e.target.closest(".vertical-scroll")) return;
       if (e.deltaY !== 0) {
         el.scrollLeft += e.deltaY;
         e.preventDefault();

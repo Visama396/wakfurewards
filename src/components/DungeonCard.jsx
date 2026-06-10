@@ -182,10 +182,7 @@ export default function DungeonCard({
             Guía
           </button>
         </div>
-        <div
-          className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5"
-          onWheel={(e) => e.stopPropagation()}
-        >
+        <div className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
           {[...rewards]
             .sort((a, b) => {
               const diff = b.stasis - a.stasis;
