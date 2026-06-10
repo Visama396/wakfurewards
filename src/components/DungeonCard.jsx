@@ -81,7 +81,8 @@ export default function DungeonCard({
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        className={`rounded-lg p-3 shrink-0 min-w-72 flex flex-col h-full ${variantClass}`}
+        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass}`}
+        onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell
