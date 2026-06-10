@@ -82,7 +82,6 @@ export default function DungeonCard({
     <TooltipProvider delayDuration={300}>
       <div
         className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass}`}
-        onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell
@@ -183,7 +182,10 @@ export default function DungeonCard({
             Guía
           </button>
         </div>
-        <div className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
+        <div
+          className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5"
+          onWheel={(e) => e.stopPropagation()}
+        >
           {[...rewards]
             .sort((a, b) => {
               const diff = b.stasis - a.stasis;
