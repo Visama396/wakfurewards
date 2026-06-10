@@ -75,6 +75,13 @@ clave: `<div>...</div>`,
 - `xD` (flexible) — purple, counts as both CaC and DaD
 - `Padre Ausente` (inactive) — gray, hidden from active lists
 
+## Versioning
+
+- **Major (1.x.x):** Breaking changes or full rewrites
+- **Minor (x.2.x):** New features (dungeon guides, new UI sections, etc.)
+- **Patch (x.x.3):** Updates to existing features (new profile data, guide content, bug fixes)
+- Bump `version` in `package.json` whenever adding guides, profiles, or any notable change
+
 ## Commands
 
 | Command | Action |

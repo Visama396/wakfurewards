@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
+import pkg from "../../package.json";
 
 const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
@@ -451,6 +452,12 @@ export default function App() {
         characters={sortedChars}
         onTogglePadre={togglePadreAusente}
       />
+
+      <footer className="border-t border-gray-700/40 pt-4 pb-2 text-center text-xs text-gray-500 space-y-1">
+        <p>Este sitio no está afiliado a Ankama. Wakfu es una marca registrada de Ankama.</p>
+        <p>Desarrollado por Visama &amp; Peballo</p>
+        <p>v{pkg.version}</p>
+      </footer>
 
       <AddRewardModal
         show={showAdd}
