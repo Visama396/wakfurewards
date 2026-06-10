@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
 
@@ -61,6 +61,20 @@ export default function App() {
     new Set(),
   );
   const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onWheel(e) {
+      if (e.deltaY !== 0) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     async function fetchTodayDailies() {
@@ -406,13 +420,8 @@ export default function App() {
             className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-300"
           />
           <div
+            ref={scrollRef}
             className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
-            onWheel={(e) => {
-              if (e.deltaY !== 0) {
-                e.currentTarget.scrollLeft += e.deltaY;
-                e.preventDefault();
-              }
-            }}
           >
             {dungeons
               .filter(
