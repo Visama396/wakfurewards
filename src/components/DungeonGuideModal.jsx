@@ -9,6 +9,12 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
   const cardRef = useRef(null);
   const [swipeY, setSwipeY] = useState(0);
   const startY = useRef(0);
+  const touchActive = useRef(false);
+
+  useEffect(() => {
+    document.body.style.overscrollBehavior = "contain";
+    return () => { document.body.style.overscrollBehavior = ""; };
+  }, []);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -43,22 +49,46 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
     };
   }, []);
 
-  function onTouchStart(e) {
-    startY.current = e.touches[0].clientY;
-  }
+  // Native touch listeners with passive: false so preventDefault has effect
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
 
-  function onTouchMove(e) {
-    const dy = e.touches[0].clientY - startY.current;
-    if (dy > 0) setSwipeY(dy);
-  }
-
-  function onTouchEnd() {
-    if (swipeY > 100) {
-      onClose();
-    } else {
-      setSwipeY(0);
+    function onTouchStart(e) {
+      touchActive.current = true;
+      startY.current = e.touches[0].clientY;
     }
-  }
+
+    function onTouchMove(e) {
+      if (!touchActive.current) return;
+      const dy = e.touches[0].clientY - startY.current;
+      if (dy > 0) {
+        const content = contentRef.current;
+        if (!content || !content.contains(e.target) || content.scrollTop === 0) {
+          e.preventDefault();
+          setSwipeY(dy);
+        }
+      }
+    }
+
+    function onTouchEnd() {
+      touchActive.current = false;
+      setSwipeY((current) => {
+        if (current > 100) onClose();
+        return 0;
+      });
+    }
+
+    card.addEventListener("touchstart", onTouchStart, { passive: true });
+    card.addEventListener("touchmove", onTouchMove, { passive: false });
+    card.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      card.removeEventListener("touchstart", onTouchStart);
+      card.removeEventListener("touchmove", onTouchMove);
+      card.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [onClose]);
 
   return (
     <div
@@ -68,11 +98,10 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
       <div
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
-        style={{ transform: swipeY > 0 ? `translateY(${swipeY}px)` : "" }}
+        style={{
+          transform: swipeY > 0 ? `translateY(${swipeY}px)` : "",
+        }}
         className="bg-[#0d2733] rounded-t-2xl sm:rounded-lg p-6 w-full sm:w-1/2 border border-gray-600 max-h-[85vh] flex flex-col transition-transform duration-200 ease-out"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
       >
         <div className="flex justify-center mb-3 sm:hidden">
           <div className="w-10 h-1 rounded-full bg-gray-600" />
@@ -93,12 +122,6 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
           className="overflow-y-auto overflow-x-hidden vertical-scroll min-h-0 pr-1 guide-content"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-        <button
-          onClick={onClose}
-          className="mt-4 self-end px-4 py-2 text-sm bg-orange-400 hover:bg-orange-300 rounded font-medium text-black cursor-pointer"
-        >
-          Cerrar
-        </button>
       </div>
 
       {createPortal(

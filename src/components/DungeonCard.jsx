@@ -32,6 +32,7 @@ export default function DungeonCard({
   onAdd,
   onDelete,
   onUpdateStasis,
+  onAddTeam,
   highlightedDungeonNames = new Set(),
   moduloxDungeonNames = new Set(),
 }) {
@@ -40,6 +41,8 @@ export default function DungeonCard({
   const [selectedStasis, setSelectedStasis] = useState(1);
   const [showRecommender, setShowRecommender] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState(null);
+  const [rerolearExcludedIds, setRerolearExcludedIds] = useState(new Set());
+  const [presetChar, setPresetChar] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
 
   const dungTotal = rewards.reduce((s, r) => s + r.stasis, 0);
@@ -68,10 +71,21 @@ export default function DungeonCard({
     setSelectedStasis(1);
   }
 
-  function handleRecommend() {
+  function handleRecommend(char) {
+    setPresetChar(char || null);
     const result = recommendTeam(dungeon.name, incompleteChars);
     setRecommendationResult(result);
+    setRerolearExcludedIds(new Set());
     setShowRecommender(true);
+  }
+
+  function handleRerolear(teamCharIds) {
+    const newExcluded = new Set(rerolearExcludedIds);
+    teamCharIds.forEach((id) => newExcluded.add(id));
+    setRerolearExcludedIds(newExcluded);
+    const filtered = incompleteChars.filter((c) => !newExcluded.has(c.id));
+    const result = recommendTeam(dungeon.name, filtered);
+    setRecommendationResult(result);
   }
 
   function handleGuide() {
@@ -120,7 +134,17 @@ export default function DungeonCard({
               align="end"
               className="w-64 bg-[#0d2733] border border-gray-600 text-white"
             >
-              <p className="text-sm font-medium mb-1">Añadir personaje</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium">Añadir personaje</p>
+                {selectedChar && (
+                  <button
+                    onClick={() => { handleRecommend(selectedChar); setPopoverOpen(false); }}
+                    className="text-xs bg-gray-600 hover:bg-gray-500 rounded px-2 py-1 cursor-pointer font-medium text-white whitespace-nowrap"
+                  >
+                    Al Builder
+                  </button>
+                )}
+              </div>
               <Combobox
                 items={incompleteChars}
                 value={selectedChar}
@@ -241,7 +265,12 @@ export default function DungeonCard({
       {showRecommender && (
         <TeamRecommendationModal
           dungeonName={dungeon.name}
+          dungeon={dungeon}
           result={recommendationResult}
+          incompleteChars={incompleteChars}
+          onAddTeam={onAddTeam}
+          onRerolear={handleRerolear}
+          presetChar={presetChar}
           onClose={() => setShowRecommender(false)}
         />
       )}

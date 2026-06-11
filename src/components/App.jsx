@@ -36,7 +36,8 @@ const SPREADSHEET_TO_APP = {
 
 import DungeonCard from "@/components/DungeonCard";
 import CharacterCard from "@/components/CharacterCard";
-import AddRewardModal from "@/components/AddRewardModal";
+import TeamRecommendationModal from "@/components/TeamRecommendationModal";
+import { recommendTeam } from "@/lib/teamRecommender";
 import FilterBar from "@/components/FilterBar";
 import { Toaster } from "@/components/ui/sonner";
 import PadresAusentes from "@/components/PadresAusentes";
@@ -50,10 +51,6 @@ export default function App() {
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [addChar, setAddChar] = useState("");
-  const [addDung, setAddDung] = useState("");
-  const [addStasis, setAddStasis] = useState(1);
   const [playerFilter, setPlayerFilter] = useState(null);
   const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
   const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
@@ -63,6 +60,44 @@ export default function App() {
   );
   const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
   const scrollRef = useRef(null);
+  const [builderDungeonId, setBuilderDungeonId] = useState(null);
+  const [builderPresetChar, setBuilderPresetChar] = useState(null);
+  const [builderResult, setBuilderResult] = useState(null);
+  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(new Set());
+
+  function handleOpenBuilder(dungeonId, presetChar) {
+    setBuilderDungeonId(dungeonId);
+    setBuilderPresetChar(presetChar);
+    const completedCharIds = new Set(
+      (dungRewardMap[dungeonId] || []).map((r) => r.char),
+    );
+    const chars = sortedChars.filter(
+      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+    );
+    const dungeon = dungeons.find((d) => d.id === dungeonId);
+    if (dungeon) {
+      const result = recommendTeam(dungeon.name, chars);
+      setBuilderResult(result);
+    }
+    setBuilderRerolearExcludedIds(new Set());
+  }
+
+  function handleBuilderRerolear(teamCharIds) {
+    const newExcluded = new Set(builderRerolearExcludedIds);
+    teamCharIds.forEach((id) => newExcluded.add(id));
+    setBuilderRerolearExcludedIds(newExcluded);
+    const dungeon = dungeons.find((d) => d.id === builderDungeonId);
+    if (!dungeon) return;
+    const completedCharIds = new Set(
+      (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
+    );
+    const chars = sortedChars.filter(
+      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+    );
+    const filtered = chars.filter((c) => !newExcluded.has(c.id));
+    const result = recommendTeam(dungeon.name, filtered);
+    setBuilderResult(result);
+  }
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -119,29 +154,6 @@ export default function App() {
     if (d.data) setDungeons(d.data);
     if (r.data) setRewards(r.data);
     setLoading(false);
-  }
-
-  // Crea una nueva recompensa en Supabase
-  async function addReward(e) {
-    e.preventDefault();
-    const { error } = await supabase.from("wakfurewards").insert({
-      char: parseInt(addChar),
-      dung: parseInt(addDung),
-      stasis: parseInt(addStasis),
-    });
-    if (!error) {
-      const char = charMap[addChar];
-      const dung = dungeons.find((d) => d.id === parseInt(addDung));
-      const sufijo = char?.gender === 1 ? "añadida" : "añadido";
-      toast.success(
-        `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
-      );
-      setShowAdd(false);
-      setAddChar("");
-      setAddDung("");
-      setAddStasis(1);
-      loadData();
-    }
   }
 
   // Elimina una recompensa por su ID
@@ -281,15 +293,6 @@ export default function App() {
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
-  // Abre el modal con un personaje preseleccionado
-  function handleAdd(characterId) {
-    setAddChar(String(characterId));
-    setAddDung("");
-    setShowAdd(true);
-  }
-
-  const modalChars = sortedChars.filter((c) => c.charrole !== "Padre Ausente");
-
   // Añade directamente una recompensa desde el popover de la tarjeta de mazmorra
   async function addDungeonReward(dungId, charId, stasis) {
     const { error } = await supabase.from("wakfurewards").insert({
@@ -308,21 +311,20 @@ export default function App() {
     }
   }
 
-  function handleCharChange(charId) {
-    setAddChar(charId);
+  async function addDungeonTeamReward(dungId, teamMembers, stasis) {
+    const inserts = teamMembers.map((char) => ({
+      char: char.id,
+      dung: dungId,
+      stasis: parseInt(stasis),
+    }));
+
+    const { error } = await supabase.from("wakfurewards").insert(inserts);
+    if (!error) {
+      const dung = dungeons.find((d) => d.id === dungId);
+      toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
+      loadData();
+    }
   }
-
-  const charIdNum = addChar ? parseInt(addChar) : null;
-  const completedDungIds = charIdNum
-    ? new Set((rewardMap[charIdNum] || []).map((r) => r.dung))
-    : new Set();
-  const availableDungeons = dungeons.filter((d) => !completedDungIds.has(d.id));
-
-  const dungIdNum = addDung ? parseInt(addDung) : null;
-  const completedCharIds = dungIdNum
-    ? new Set((dungRewardMap[dungIdNum] || []).map((r) => r.char))
-    : new Set();
-  const availableChars = modalChars.filter((c) => !completedCharIds.has(c.id));
 
   if (loading) {
     return <div className="p-8 text-center text-gray-400">Cargando...</div>;
@@ -399,7 +401,8 @@ export default function App() {
                   <CharacterCard
                     key={c.id}
                     character={c}
-                    onAdd={handleAdd}
+                    onAddReward={addDungeonReward}
+                    onOpenBuilder={handleOpenBuilder}
                     dungeons={dungeons}
                     rewardMap={rewardMap}
                     onTogglePadre={togglePadreAusente}
@@ -440,6 +443,7 @@ export default function App() {
                   onAdd={addDungeonReward}
                   onDelete={deleteReward}
                   onUpdateStasis={updateStasis}
+                  onAddTeam={addDungeonTeamReward}
                   highlightedDungeonNames={highlightedDungeonNames}
                   moduloxDungeonNames={moduloxDungeonNames}
                 />
@@ -459,21 +463,28 @@ export default function App() {
         <p>v{pkg.version}</p>
       </footer>
 
-      <AddRewardModal
-        show={showAdd}
-        onClose={() => setShowAdd(false)}
-        onSubmit={addReward}
-        characters={availableChars}
-        dungeons={availableDungeons}
-        charValue={addChar}
-        dungValue={addDung}
-        stasisValue={addStasis}
-        onCharChange={handleCharChange}
-        onDungChange={setAddDung}
-        onStasisChange={setAddStasis}
-        highlightedDungeonNames={highlightedDungeonNames}
-        moduloxDungeonNames={moduloxDungeonNames}
-      />
+      {builderDungeonId && builderResult && (() => {
+        const dungeon = dungeons.find((d) => d.id === builderDungeonId);
+        if (!dungeon) return null;
+        const completedCharIds = new Set(
+          (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
+        );
+        const chars = sortedChars.filter(
+          (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+        );
+        return (
+          <TeamRecommendationModal
+            dungeonName={dungeon.name}
+            dungeon={dungeon}
+            result={builderResult}
+            incompleteChars={chars}
+            onAddTeam={addDungeonTeamReward}
+            onRerolear={handleBuilderRerolear}
+            presetChar={builderPresetChar}
+            onClose={() => { setBuilderDungeonId(null); setBuilderPresetChar(null); setBuilderResult(null); }}
+          />
+        );
+      })()}
       <Toaster />
     </div>
   );
