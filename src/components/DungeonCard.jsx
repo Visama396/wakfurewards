@@ -150,9 +150,9 @@ export default function DungeonCard({
                 value={selectedChar}
                 onValueChange={(item) => setSelectedChar(item)}
                 itemToStringLabel={(item) =>
-                  `${item.char} — ${item.class} (${item.charrole})`
+                  item ? `${item.char} — ${item.class} (${item.charrole})` : ""
                 }
-                itemToStringValue={(item) => item.id.toString()}
+                itemToStringValue={(item) => (item && item.id ? item.id.toString() : "")}
               >
                 <ComboboxInput placeholder="Buscar personaje..." />
                 <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">
@@ -192,7 +192,7 @@ export default function DungeonCard({
         </div>
         <div className="flex items-center gap-1 mb-2">
           <button
-            onClick={handleRecommend}
+            onClick={() => handleRecommend()}
             className="text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer text-black"
             title="Recomendar equipo"
           >

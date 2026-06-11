@@ -297,9 +297,9 @@ export default function TeamRecommendationModal({
                   value={slots[i]}
                   onValueChange={(item) => handleSlotChange(i, item)}
                   itemToStringLabel={(item) =>
-                    `${item.char} — ${item.class} (${item.charrole})`
+                    item ? `${item.char} — ${item.class} (${item.charrole})` : ""
                   }
-                  itemToStringValue={(item) => item.id.toString()}
+                  itemToStringValue={(item) => (item && item.id ? item.id.toString() : "")}
                 >
                   <ComboboxInput placeholder={`Personaje ${i + 1}...`} />
                   <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">

@@ -111,8 +111,8 @@ export default function CharacterCard({
               items={uncompletedDungeons}
               value={selectedDung}
               onValueChange={(item) => setSelectedDung(item)}
-              itemToStringLabel={(item) => item.name}
-              itemToStringValue={(item) => item.id.toString()}
+              itemToStringLabel={(item) => (item ? item.name : "")}
+              itemToStringValue={(item) => (item && item.id ? item.id.toString() : "")}
             >
               <ComboboxInput placeholder="Buscar mazmorra..." />
               <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">
