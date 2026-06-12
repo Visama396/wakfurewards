@@ -141,6 +141,19 @@ export default function App() {
     }
     loadData();
     fetchTodayDailies();
+
+    const channel = supabase
+      .channel("wakfurewards-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wakfurewards" },
+        () => loadData(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Carga todos los datos desde Supabase al iniciar
@@ -295,35 +308,45 @@ export default function App() {
 
   // Añade directamente una recompensa desde el popover de la tarjeta de mazmorra
   async function addDungeonReward(dungId, charId, stasis) {
-    const { error } = await supabase.from("wakfurewards").insert({
+    const payload = {
       char: parseInt(charId),
       dung: parseInt(dungId),
       stasis: parseInt(stasis),
-    });
-    if (!error) {
-      const char = charMap[charId];
-      const dung = dungeons.find((d) => d.id === parseInt(dungId));
-      const sufijo = char?.gender === 1 ? "añadida" : "añadido";
-      toast.success(
-        `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
-      );
-      loadData();
+    };
+    const { error } = await supabase.from("wakfurewards").insert(payload);
+    if (error) {
+      console.error("Error al insertar:", error);
+      toast.error("Error al añadir: " + error.message);
+      return;
     }
+    const char = charMap[charId];
+    const dung = dungeons.find((d) => d.id === parseInt(dungId));
+    const sufijo = char?.gender === 1 ? "añadida" : "añadido";
+    toast.success(
+      `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
+    );
+    loadData();
   }
 
   async function addDungeonTeamReward(dungId, teamMembers, stasis) {
+    if (!teamMembers || teamMembers.length === 0) {
+      toast.error("No hay personajes para añadir");
+      return;
+    }
     const inserts = teamMembers.map((char) => ({
-      char: char.id,
-      dung: dungId,
+      char: parseInt(char.id),
+      dung: parseInt(dungId),
       stasis: parseInt(stasis),
     }));
 
     const { error } = await supabase.from("wakfurewards").insert(inserts);
-    if (!error) {
-      const dung = dungeons.find((d) => d.id === dungId);
-      toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
-      loadData();
+    if (error) {
+      toast.error("Error al añadir equipo: " + error.message);
+      return;
     }
+    const dung = dungeons.find((d) => d.id === parseInt(dungId));
+    toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
+    loadData();
   }
 
   if (loading) {
