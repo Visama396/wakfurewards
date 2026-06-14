@@ -50,7 +50,7 @@ export default function RecompensasTab({
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[25%_1fr] gap-4 items-stretch flex-1 min-h-0">
         <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full">
           <div className="flex flex-col gap-2 mb-4 shrink-0">
             <h2 className="text-lg font-semibold text-orange-300">
