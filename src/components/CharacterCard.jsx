@@ -43,9 +43,18 @@ export default function CharacterCard({
     setSelectedStasis(1);
   }
 
+  function handleDragStart(e) {
+    e.dataTransfer.setData("text/plain", character.id.toString());
+    e.dataTransfer.effectAllowed = "copy";
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="bg-[#163544] rounded px-3 py-2 flex items-center justify-between gap-2 group/card">
+      <div
+        draggable="true"
+        onDragStart={handleDragStart}
+        className="bg-[#163544] rounded px-3 py-2 flex items-center justify-between gap-2 group/card cursor-grab active:cursor-grabbing"
+      >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <TooltipCell

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import ClassIcon from "@/components/ClassIcon";
 import RoleBadge from "@/components/RoleBadge";
 import { STASIS_OPTIONS } from "@/lib/constants";
@@ -11,6 +11,11 @@ import {
   ComboboxItem,
   ComboboxEmpty,
 } from "@/components/ui/combobox";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerClose,
+} from "@/components/ui/drawer";
 
 export default function TeamRecommendationModal({
   dungeonName,
@@ -35,56 +40,6 @@ export default function TeamRecommendationModal({
   );
   const [recommendedStasis, setRecommendedStasis] = useState(1);
   const [customStasis, setCustomStasis] = useState(1);
-  const [swipeY, setSwipeY] = useState(0);
-  const cardRef = useRef(null);
-  const scrollRef = useRef(null);
-  const startY = useRef(0);
-  const touchActive = useRef(false);
-
-  useEffect(() => {
-    document.body.style.overscrollBehavior = "contain";
-    return () => { document.body.style.overscrollBehavior = ""; };
-  }, []);
-
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-
-    function onTouchStart(e) {
-      touchActive.current = true;
-      startY.current = e.touches[0].clientY;
-    }
-
-    function onTouchMove(e) {
-      if (!touchActive.current) return;
-      const dy = e.touches[0].clientY - startY.current;
-      if (dy > 0) {
-        const scroll = scrollRef.current;
-        if (!scroll || !scroll.contains(e.target) || scroll.scrollTop === 0) {
-          e.preventDefault();
-          setSwipeY(dy);
-        }
-      }
-    }
-
-    function onTouchEnd() {
-      touchActive.current = false;
-      setSwipeY((current) => {
-        if (current > 100) onClose();
-        return 0;
-      });
-    }
-
-    card.addEventListener("touchstart", onTouchStart, { passive: true });
-    card.addEventListener("touchmove", onTouchMove, { passive: false });
-    card.addEventListener("touchend", onTouchEnd, { passive: true });
-
-    return () => {
-      card.removeEventListener("touchstart", onTouchStart);
-      card.removeEventListener("touchmove", onTouchMove);
-      card.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [onClose]);
 
   function handleSlotChange(index, character) {
     const newSlots = [...slots];
@@ -156,38 +111,18 @@ export default function TeamRecommendationModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        ref={cardRef}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          transform: swipeY > 0 ? `translateY(${swipeY}px)` : "",
-        }}
-        className="bg-[#0d2733] rounded-t-2xl sm:rounded-lg p-6 w-full max-w-2xl border border-gray-600 max-h-[85vh] flex flex-col transition-transform duration-200 ease-out"
-      >
-        <div className="flex justify-center mb-3 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-gray-600" />
-        </div>
-
-        <div className="flex items-center justify-between mb-3 shrink-0">
+    <Drawer open onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
           <h3 className="text-lg font-semibold text-orange-300">
             Equipo para {dungeonName}
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none"
-          >
+          <DrawerClose className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none">
             ×
-          </button>
+          </DrawerClose>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="overflow-y-auto vertical-scroll min-h-0 pr-1 space-y-4"
-        >
+        <div className="overflow-y-auto vertical-scroll min-h-0 flex-1 px-6 pb-6 pt-4 space-y-4">
           {result.explanation && (
             <p className="text-sm text-gray-400 italic">
               {result.explanation}
@@ -338,7 +273,7 @@ export default function TeamRecommendationModal({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

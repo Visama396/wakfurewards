@@ -44,6 +44,7 @@ export default function DungeonCard({
   const [rerolearExcludedIds, setRerolearExcludedIds] = useState(new Set());
   const [presetChar, setPresetChar] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const dungTotal = rewards.reduce((s, r) => s + r.stasis, 0);
 
@@ -92,10 +93,36 @@ export default function DungeonCard({
     setShowGuide(true);
   }
 
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDragEnter(e) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave() {
+    setDragOver(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    const charId = parseInt(e.dataTransfer.getData("text/plain"));
+    if (!charId || completedCharIds.has(charId)) return;
+    onAdd(dungeon.id, charId, 1);
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass}`}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass} ${dragOver ? "ring-2 ring-orange-400/60" : ""}`}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell

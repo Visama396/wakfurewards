@@ -1,20 +1,16 @@
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { SPELLS } from "@/data/dungeonGuides";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerClose,
+} from "@/components/ui/drawer";
 
 export default function DungeonGuideModal({ dungeonName, html, onClose }) {
   const tooltipRef = useRef(null);
   const hideTimer = useRef(null);
   const contentRef = useRef(null);
-  const cardRef = useRef(null);
-  const [swipeY, setSwipeY] = useState(0);
-  const startY = useRef(0);
-  const touchActive = useRef(false);
-
-  useEffect(() => {
-    document.body.style.overscrollBehavior = "contain";
-    return () => { document.body.style.overscrollBehavior = ""; };
-  }, []);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -49,80 +45,23 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
     };
   }, []);
 
-  // Native touch listeners with passive: false so preventDefault has effect
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-
-    function onTouchStart(e) {
-      touchActive.current = true;
-      startY.current = e.touches[0].clientY;
-    }
-
-    function onTouchMove(e) {
-      if (!touchActive.current) return;
-      const dy = e.touches[0].clientY - startY.current;
-      if (dy > 0) {
-        const content = contentRef.current;
-        if (!content || !content.contains(e.target) || content.scrollTop === 0) {
-          e.preventDefault();
-          setSwipeY(dy);
-        }
-      }
-    }
-
-    function onTouchEnd() {
-      touchActive.current = false;
-      setSwipeY((current) => {
-        if (current > 100) onClose();
-        return 0;
-      });
-    }
-
-    card.addEventListener("touchstart", onTouchStart, { passive: true });
-    card.addEventListener("touchmove", onTouchMove, { passive: false });
-    card.addEventListener("touchend", onTouchEnd, { passive: true });
-
-    return () => {
-      card.removeEventListener("touchstart", onTouchStart);
-      card.removeEventListener("touchmove", onTouchMove);
-      card.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        ref={cardRef}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          transform: swipeY > 0 ? `translateY(${swipeY}px)` : "",
-        }}
-        className="bg-[#0d2733] rounded-t-2xl sm:rounded-lg p-6 w-full sm:w-1/2 border border-gray-600 max-h-[85vh] flex flex-col transition-transform duration-200 ease-out"
-      >
-        <div className="flex justify-center mb-3 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-gray-600" />
-        </div>
-        <div className="flex items-center justify-between mb-4 shrink-0">
+    <Drawer open onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
           <h3 className="text-lg font-semibold text-orange-300">
             Guía: {dungeonName}
           </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none"
-          >
+          <DrawerClose className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none">
             ×
-          </button>
+          </DrawerClose>
         </div>
         <div
           ref={contentRef}
-          className="overflow-y-auto overflow-x-hidden vertical-scroll min-h-0 pr-1 guide-content"
+          className="overflow-y-auto overflow-x-hidden vertical-scroll min-h-0 flex-1 px-6 pb-6 pt-4 guide-content"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      </div>
+      </DrawerContent>
 
       {createPortal(
         <div
@@ -140,6 +79,6 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
         />,
         document.body,
       )}
-    </div>
+    </Drawer>
   );
 }
