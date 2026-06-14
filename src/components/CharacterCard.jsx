@@ -5,6 +5,7 @@ import TooltipCell from "@/components/TooltipCell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { EyeOff } from "lucide-react";
 import { STASIS_OPTIONS } from "@/lib/constants";
+import { useIsFinePointer } from "@/lib/utils";
 import {
   Combobox,
   ComboboxInput,
@@ -31,6 +32,7 @@ export default function CharacterCard({
     (rewardMap[character.id] || []).map((r) => r.dung),
   );
   const uncompletedDungeons = dungeons.filter((d) => !completedDungs.has(d.id));
+  const canDrag = useIsFinePointer();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedDung, setSelectedDung] = useState(null);
   const [selectedStasis, setSelectedStasis] = useState(1);
@@ -51,9 +53,9 @@ export default function CharacterCard({
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        draggable="true"
-        onDragStart={handleDragStart}
-        className="bg-[#163544] rounded px-3 py-2 flex items-center justify-between gap-2 group/card cursor-grab active:cursor-grabbing"
+        draggable={canDrag}
+        onDragStart={canDrag ? handleDragStart : undefined}
+        className={`bg-[#163544] rounded px-3 py-2 flex items-center justify-between gap-2 group/card ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

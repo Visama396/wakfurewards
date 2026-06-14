@@ -22,6 +22,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { recommendTeam } from "@/lib/teamRecommender";
 import { getGuide } from "@/data/dungeonGuides";
+import { useIsFinePointer } from "@/lib/utils";
 import TeamRecommendationModal from "@/components/TeamRecommendationModal";
 import DungeonGuideModal from "@/components/DungeonGuideModal";
 
@@ -44,6 +45,7 @@ export default function DungeonCard({
   const [rerolearExcludedIds, setRerolearExcludedIds] = useState(new Set());
   const [presetChar, setPresetChar] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
+  const canDrag = useIsFinePointer();
   const [dragOver, setDragOver] = useState(false);
 
   const dungTotal = rewards.reduce((s, r) => s + r.stasis, 0);
@@ -118,11 +120,11 @@ export default function DungeonCard({
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        onDragOver={handleDragOver}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass} ${dragOver ? "ring-2 ring-orange-400/60" : ""}`}
+        onDragOver={canDrag ? handleDragOver : undefined}
+        onDragEnter={canDrag ? handleDragEnter : undefined}
+        onDragLeave={canDrag ? handleDragLeave : undefined}
+        onDrop={canDrag ? handleDrop : undefined}
+        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass} ${dragOver && canDrag ? "ring-2 ring-orange-400/60" : ""}`}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell

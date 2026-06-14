@@ -112,7 +112,7 @@ export default function TeamRecommendationModal({
 
   return (
     <Drawer open onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col max-h-[85vh]">
+      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col max-h-[85dvh] mt-0">
         <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
           <h3 className="text-lg font-semibold text-orange-300">
             Equipo para {dungeonName}

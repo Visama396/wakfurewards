@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
 import pkg from "../../package.json";
@@ -34,17 +34,21 @@ const SPREADSHEET_TO_APP = {
   Necromundo: "Muertohambres",
 };
 
-import DungeonCard from "@/components/DungeonCard";
-import CharacterCard from "@/components/CharacterCard";
 import TeamRecommendationModal from "@/components/TeamRecommendationModal";
 import { recommendTeam } from "@/lib/teamRecommender";
-import FilterBar from "@/components/FilterBar";
-import { Toaster } from "@/components/ui/sonner";
-import PadresAusentes from "@/components/PadresAusentes";
-import RoleSelector from "@/components/RoleSelector";
 import DailiesButton from "@/components/DailiesButton";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import RecompensasTab from "@/components/RecompensasTab";
+import BuildsTab from "@/components/BuildsTab";
+import GuiasTab from "@/components/GuiasTab";
+import CompraTab from "@/components/CompraTab";
 
-// Controlador principal: carga datos, gestiona recompensas y renderiza las secciones
 export default function App() {
   const [characters, setCharacters] = useState([]);
   const [dungeons, setDungeons] = useState([]);
@@ -52,14 +56,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   const [playerFilter, setPlayerFilter] = useState(null);
-  const [dungeonFilter, setDungeonFilter] = useState(""); // Filtro de texto para buscar mazmorras en Completados
-  const [searchCharacters, setSearchCharacters] = useState(""); // Filtro para buscar personajes por nombre
-  const [roleFilter, setRoleFilter] = useState(""); // Filtro para buscar personajes por rol
+  const [dungeonFilter, setDungeonFilter] = useState("");
+  const [searchCharacters, setSearchCharacters] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(
     new Set(),
   );
   const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
-  const scrollRef = useRef(null);
   const [builderDungeonId, setBuilderDungeonId] = useState(null);
   const [builderPresetChar, setBuilderPresetChar] = useState(null);
   const [builderResult, setBuilderResult] = useState(null);
@@ -98,20 +101,6 @@ export default function App() {
     const result = recommendTeam(dungeon.name, filtered);
     setBuilderResult(result);
   }
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    function onWheel(e) {
-      if (e.target.closest(".vertical-scroll")) return;
-      if (e.deltaY !== 0) {
-        el.scrollLeft += e.deltaY;
-        e.preventDefault();
-      }
-    }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [loading]);
 
   useEffect(() => {
     async function fetchTodayDailies() {
@@ -156,7 +145,6 @@ export default function App() {
     };
   }, []);
 
-  // Carga todos los datos desde Supabase al iniciar
   async function loadData() {
     const [c, d, r] = await Promise.all([
       supabase.from("wakfuchars").select("*").order("id"),
@@ -169,7 +157,6 @@ export default function App() {
     setLoading(false);
   }
 
-  // Elimina una recompensa por su ID
   async function deleteReward(id) {
     const reward = rewards.find((r) => r.id === id);
     const char = reward ? charMap[reward.char] : null;
@@ -184,7 +171,6 @@ export default function App() {
     }
   }
 
-  // Reinicia todas las recompensas del mes
   async function resetRewards() {
     if (
       !window.confirm(
@@ -196,7 +182,6 @@ export default function App() {
     await supabase.from("wakfurewards").delete().gt("id", 0);
   }
 
-  // Actualiza el stasis de una recompensa existente
   async function updateStasis(id, val) {
     const { error } = await supabase
       .from("wakfurewards")
@@ -229,10 +214,9 @@ export default function App() {
         : `${character.char} ha regresado a la lista activa`,
     );
 
-    await loadData(); // Recarga los datos de Supabase para actualizar la pantalla
+    await loadData();
   }
 
-  // Calcula los días/horas restantes hasta fin de mes
   function countdown() {
     const now = new Date();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -306,7 +290,6 @@ export default function App() {
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
-  // Añade directamente una recompensa desde el popover de la tarjeta de mazmorra
   async function addDungeonReward(dungId, charId, stasis) {
     const payload = {
       char: parseInt(charId),
@@ -353,10 +336,23 @@ export default function App() {
     return <div className="p-8 text-center text-gray-400">Cargando...</div>;
   }
 
+  const tabContentClass = "flex flex-col flex-1 min-h-0 mt-0 gap-0";
+
   return (
-    <div className="p-4 space-y-6 flex flex-col min-h-screen">
+    <Tabs
+      defaultValue="recompensas"
+      className="p-4 space-y-6 flex flex-col min-h-screen gap-0"
+    >
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
-        <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
+        <div className="flex items-center gap-4 flex-wrap">
+          <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
+          <TabsList variant="line">
+            <TabsTrigger value="recompensas">Recompensas</TabsTrigger>
+            <TabsTrigger value="builds">Builds</TabsTrigger>
+            <TabsTrigger value="guias">Guías</TabsTrigger>
+            <TabsTrigger value="compra">Compra</TabsTrigger>
+          </TabsList>
+        </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">{countdown()}</span>
@@ -365,120 +361,56 @@ export default function App() {
               moduloxDungeons={moduloxDungeonNames}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <button
-              className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
-              onClick={resetRewards}
-            >
-              Resetear
-            </button>
-            <span className="text-2xl font-bold text-yellow-400">
-              {totalStasis}
-            </span>
-            <span className="text-lg text-gray-400">cofres</span>
-          </div>
+          <button
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
+            onClick={resetRewards}
+          >
+            Resetear
+          </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20%_1fr] gap-4 items-stretch flex-1 min-h-0">
-        <section className="bg-[#0d2733] rounded-lg p-3 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full">
-          <div className="flex flex-col gap-2 mb-4 shrink-0">
-            <h2 className="text-lg font-semibold text-orange-300">
-              Personajes ({searchFilteredInactives.length})
-            </h2>
-            <div className="w-full flex flex-col gap-3">
-              <FilterBar
-                players={inactivePlayers}
-                currentFilter={playerFilter}
-                onFilter={setPlayerFilter}
-              />
+      <TabsContent value="recompensas" className={tabContentClass}>
+        <RecompensasTab
+          searchFilteredInactives={searchFilteredInactives}
+          inactivePlayers={inactivePlayers}
+          playerFilter={playerFilter}
+          setPlayerFilter={setPlayerFilter}
+          roleFilter={roleFilter}
+          setRoleFilter={setRoleFilter}
+          availableRoles={availableRoles}
+          searchCharacters={searchCharacters}
+          setSearchCharacters={setSearchCharacters}
+          dungeons={dungeons}
+          dungRewardMap={dungRewardMap}
+          charMap={charMap}
+          rewardMap={rewardMap}
+          dungeonFilter={dungeonFilter}
+          setDungeonFilter={setDungeonFilter}
+          addDungeonReward={addDungeonReward}
+          deleteReward={deleteReward}
+          updateStasis={updateStasis}
+          addDungeonTeamReward={addDungeonTeamReward}
+          handleOpenBuilder={handleOpenBuilder}
+          highlightedDungeonNames={highlightedDungeonNames}
+          moduloxDungeonNames={moduloxDungeonNames}
+          sortedChars={sortedChars}
+          totalStasis={totalStasis}
+          togglePadreAusente={togglePadreAusente}
+        />
+      </TabsContent>
 
-              <RoleSelector
-                availableRoles={availableRoles}
-                roleFilter={roleFilter}
-                setRoleFilter={setRoleFilter}
-              />
-            </div>
-          </div>
+      <TabsContent value="builds" className={tabContentClass}>
+        <BuildsTab />
+      </TabsContent>
 
-          <div className="mb-3 shrink-0">
-            <input
-              type="text"
-              placeholder="Buscar personaje por nombre..."
-              value={searchCharacters}
-              onChange={(e) => setSearchCharacters(e.target.value)}
-              className="w-full p-2 text-sm rounded bg-[#163a4a] text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:border-orange-300"
-            />
-          </div>
+      <TabsContent value="guias" className={tabContentClass}>
+        <GuiasTab />
+      </TabsContent>
 
-          <div className="flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
-            {searchFilteredInactives.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                {searchCharacters || roleFilter || playerFilter
-                  ? "No hay coincidencias para los filtros seleccionados"
-                  : "No hay personajes registrados en el sistema"}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 gap-2">
-                {searchFilteredInactives.map((c) => (
-                  <CharacterCard
-                    key={c.id}
-                    character={c}
-                    onAddReward={addDungeonReward}
-                    onOpenBuilder={handleOpenBuilder}
-                    dungeons={dungeons}
-                    rewardMap={rewardMap}
-                    onTogglePadre={togglePadreAusente}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="bg-[#0d2733] rounded-lg p-4 flex flex-col max-h-[50vh] lg:max-h-none lg:h-0 lg:min-h-full overflow-hidden">
-          <h2 className="text-lg font-semibold text-green-300">
-            Clasificación Mazmorras
-          </h2>
-          <input
-            type="text"
-            placeholder="Filtrar mazmorra..."
-            value={dungeonFilter}
-            onChange={(e) => setDungeonFilter(e.target.value)}
-            className="mt-2 mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-300"
-          />
-          <div
-            ref={scrollRef}
-            className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
-          >
-            {dungeons
-              .filter(
-                (d) =>
-                  dungRewardMap[d.id] &&
-                  d.name.toLowerCase().includes(dungeonFilter.toLowerCase()),
-              )
-              .map((d) => (
-                <DungeonCard
-                  key={d.id}
-                  dungeon={d}
-                  rewards={dungRewardMap[d.id]}
-                  charMap={charMap}
-                  onAdd={addDungeonReward}
-                  onDelete={deleteReward}
-                  onUpdateStasis={updateStasis}
-                  onAddTeam={addDungeonTeamReward}
-                  highlightedDungeonNames={highlightedDungeonNames}
-                  moduloxDungeonNames={moduloxDungeonNames}
-                />
-              ))}
-          </div>
-        </section>
-      </div>
-
-      <PadresAusentes
-        characters={sortedChars}
-        onTogglePadre={togglePadreAusente}
-      />
+      <TabsContent value="compra" className={tabContentClass}>
+        <CompraTab />
+      </TabsContent>
 
       <footer className="border-t border-gray-700/40 pt-4 pb-2 text-center text-xs text-gray-500 space-y-1">
         <p>Este sitio no está afiliado a Ankama. Wakfu es una marca registrada de Ankama.</p>
@@ -509,6 +441,6 @@ export default function App() {
         );
       })()}
       <Toaster />
-    </div>
+    </Tabs>
   );
 }
