@@ -97,20 +97,26 @@ export default function DungeonCard({
 
   function handleDragOver(e) {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "copy";
+    setDragOver(true);
   }
 
   function handleDragEnter(e) {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(true);
   }
 
-  function handleDragLeave() {
+  function handleDragLeave(e) {
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
     setDragOver(false);
   }
 
   function handleDrop(e) {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
     const charId = parseInt(e.dataTransfer.getData("text/plain"));
     if (!charId || completedCharIds.has(charId)) return;
@@ -124,7 +130,7 @@ export default function DungeonCard({
         onDragEnter={canDrag ? handleDragEnter : undefined}
         onDragLeave={canDrag ? handleDragLeave : undefined}
         onDrop={canDrag ? handleDrop : undefined}
-        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass} ${dragOver && canDrag ? "ring-2 ring-orange-400/60" : ""}`}
+        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass}`}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell
@@ -235,7 +241,7 @@ export default function DungeonCard({
             Guía
           </button>
         </div>
-        <div className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
+        <div className={`space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 p-1.5 border-2 border-dashed rounded ${dragOver && canDrag ? "border-orange-400/60" : "border-transparent"}`}>
           {[...rewards]
             .sort((a, b) => {
               const diff = b.stasis - a.stasis;
@@ -247,10 +253,10 @@ export default function DungeonCard({
             .map((r) => {
               const char = charMap[r.char];
               return (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between text-sm"
-                >
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between text-sm group"
+                  >
                   <div className="flex items-center gap-1">
                     {char && (
                       <ClassIcon cls={char.class} gender={char.gender} />
@@ -264,7 +270,7 @@ export default function DungeonCard({
                     </TooltipCell>
                     {char && <RoleBadge role={char.charrole} />}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     <select
                       value={r.stasis}
                       onChange={(e) => {
@@ -279,12 +285,14 @@ export default function DungeonCard({
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={() => onDelete(r.id)}
-                      className="text-red-400 hover:text-red-300 text-xs cursor-pointer"
-                    >
-                      <TrashIcon />
-                    </button>
+                    <div className={`overflow-hidden grow-0 shrink min-w-0 ${canDrag ? "w-0 group-hover:w-6 transition-all duration-200 group-hover:ml-2" : "w-6 ml-2"}`}>
+                      <button
+                        onClick={() => onDelete(r.id)}
+                        className={`text-red-400 hover:text-red-300 text-xs cursor-pointer p-0.5 flex items-center justify-center ${canDrag ? "opacity-0 group-hover:opacity-100 translate-x-full group-hover:translate-x-0 transition-all duration-200" : ""}`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

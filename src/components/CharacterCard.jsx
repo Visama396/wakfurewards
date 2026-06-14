@@ -48,6 +48,16 @@ export default function CharacterCard({
   function handleDragStart(e) {
     e.dataTransfer.setData("text/plain", character.id.toString());
     e.dataTransfer.effectAllowed = "copy";
+
+    const ghost = e.target.cloneNode(true);
+    ghost.style.position = "absolute";
+    ghost.style.top = "-9999px";
+    ghost.style.left = "-9999px";
+    ghost.style.opacity = "1";
+    ghost.style.width = `${e.target.offsetWidth}px`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.offsetX, e.offsetY);
+    requestAnimationFrame(() => document.body.removeChild(ghost));
   }
 
   return (
