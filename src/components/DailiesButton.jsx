@@ -1,17 +1,26 @@
+import { useState } from "react";
 import { FileText } from "lucide-react";
 import TooltipCell from "@/components/TooltipCell";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import { useIsFinePointer } from "@/lib/utils";
 
 export default function DailiesButton({
   dailyDungeons = new Set(),
   moduloxDungeons = new Set(),
 }) {
+  const isFinePointer = useIsFinePointer();
+  const [open, setOpen] = useState(false);
   const dailyList = [...dailyDungeons].sort();
   const moduloxList = [...moduloxDungeons].sort();
   const hasDaily = dailyList.length > 0;
   const hasModulox = moduloxList.length > 0;
 
-  const tooltipContent = (
+  const content = (
     <div className="text-xs space-y-2 max-w-56">
       {hasDaily && (
         <div>
@@ -35,14 +44,30 @@ export default function DailiesButton({
     </div>
   );
 
+  if (isFinePointer) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <TooltipCell content={content} side="bottom" align="center">
+          <span className="flex items-center gap-1.5 text-xs bg-[#163a4a] hover:bg-[#1c495e] border border-gray-700/60 hover:border-orange-300/40 text-orange-300 px-2.5 py-1.5 rounded transition-all cursor-pointer font-medium select-none">
+            <FileText size={14} />
+            Diarias
+          </span>
+        </TooltipCell>
+      </TooltipProvider>
+    );
+  }
+
   return (
-    <TooltipProvider delayDuration={300}>
-      <TooltipCell content={tooltipContent} side="bottom" align="center">
-        <span className="flex items-center gap-1.5 text-xs bg-[#163a4a] hover:bg-[#1c495e] border border-gray-700/60 hover:border-orange-300/40 text-orange-300 px-2.5 py-1.5 rounded transition-all cursor-pointer font-medium select-none">
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-1.5 text-xs bg-[#163a4a] hover:bg-[#1c495e] border border-gray-700/60 hover:border-orange-300/40 text-orange-300 px-2.5 py-1.5 rounded transition-all cursor-pointer font-medium select-none">
           <FileText size={14} />
           Diarias
-        </span>
-      </TooltipCell>
-    </TooltipProvider>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2">
+        {content}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
 import pkg from "../../package.json";
+import { Menu, X } from "lucide-react";
 
 const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
@@ -38,12 +39,7 @@ import TeamRecommendationModal from "@/components/TeamRecommendationModal";
 import { recommendTeam } from "@/lib/teamRecommender";
 import DailiesButton from "@/components/DailiesButton";
 import { Toaster } from "@/components/ui/sonner";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import RecompensasTab from "@/components/RecompensasTab";
 import BuildsTab from "@/components/BuildsTab";
 import GuiasTab from "@/components/GuiasTab";
@@ -66,7 +62,10 @@ export default function App() {
   const [builderDungeonId, setBuilderDungeonId] = useState(null);
   const [builderPresetChar, setBuilderPresetChar] = useState(null);
   const [builderResult, setBuilderResult] = useState(null);
-  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(new Set());
+  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(
+    new Set(),
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
 
   function handleOpenBuilder(dungeonId, presetChar) {
     setBuilderDungeonId(dungeonId);
@@ -344,23 +343,33 @@ export default function App() {
       className="p-4 space-y-6 flex flex-col min-h-screen gap-0"
     >
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-3xl font-bold">Recompensas Fin de Mes</h1>
-          <TabsList variant="line">
-            <TabsTrigger value="recompensas">Recompensas</TabsTrigger>
-            <TabsTrigger value="builds">Builds</TabsTrigger>
-            <TabsTrigger value="guias">Guías</TabsTrigger>
-            <TabsTrigger value="compra">Compra</TabsTrigger>
-          </TabsList>
+        <div className="flex items-center justify-between sm:hidden">
+          <h1 className="text-3xl font-bold">Capturadores de Sangre</h1>
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="text-gray-300 hover:text-white cursor-pointer"
+            aria-label="Abrir menú"
+          >
+            <Menu size={24} />
+          </button>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">{countdown()}</span>
-            <DailiesButton
-              dailyDungeons={highlightedDungeonNames}
-              moduloxDungeons={moduloxDungeonNames}
-            />
+        <div className="hidden sm:flex items-center gap-3">
+          <h1 className="text-3xl font-bold">Capturadores de Sangre</h1>
+          <div className="flex items-center gap-4">
+            <TabsList variant="line">
+              <TabsTrigger value="recompensas">Recompensas</TabsTrigger>
+              <TabsTrigger value="builds">Builds</TabsTrigger>
+              <TabsTrigger value="guias">Guías</TabsTrigger>
+              <TabsTrigger value="compra">Compra</TabsTrigger>
+            </TabsList>
           </div>
+        </div>
+        <div className="hidden sm:flex flex-row items-center gap-4">
+          <span className="text-sm text-gray-400">{countdown()}</span>
+          <DailiesButton
+            dailyDungeons={highlightedDungeonNames}
+            moduloxDungeons={moduloxDungeonNames}
+          />
           <button
             className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
             onClick={resetRewards}
@@ -369,6 +378,84 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-50 flex sm:hidden"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="absolute inset-0 bg-black/60 transition-opacity duration-200"
+            style={{ animation: "fadeIn 150ms ease-out" }}
+          />
+          <nav
+            onClick={(e) => e.stopPropagation()}
+            className="relative ml-auto w-64 max-w-[75vw] h-full bg-[#0d2733] border-l border-gray-600 p-4 flex flex-col gap-8 overflow-y-auto"
+            style={{ animation: "fadeIn 150ms ease-out" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-300">Menú</span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="text-gray-400 hover:text-white cursor-pointer"
+                aria-label="Cerrar menú"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 my-6">
+              <TabsList
+                variant="line"
+                className="flex-col items-stretch bg-transparent gap-2"
+                onClick={() => setMenuOpen(false)}
+              >
+                <TabsTrigger
+                  value="recompensas"
+                  className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
+                >
+                  Recompensas
+                </TabsTrigger>
+                <TabsTrigger
+                  value="builds"
+                  className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
+                >
+                  Builds
+                </TabsTrigger>
+                <TabsTrigger
+                  value="guias"
+                  className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
+                >
+                  Guías
+                </TabsTrigger>
+                <TabsTrigger
+                  value="compra"
+                  className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
+                >
+                  Compra
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <span className="text-sm text-gray-400">{countdown()}</span>
+              <DailiesButton
+                dailyDungeons={highlightedDungeonNames}
+                moduloxDungeons={moduloxDungeonNames}
+              />
+              <button
+                className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded hover:cursor-pointer text-sm w-fit"
+                onClick={() => {
+                  resetRewards();
+                  setMenuOpen(false);
+                }}
+              >
+                Resetear
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
 
       <TabsContent value="recompensas" className={tabContentClass}>
         <RecompensasTab
@@ -413,33 +500,43 @@ export default function App() {
       </TabsContent>
 
       <footer className="border-t border-gray-700/40 pt-4 pb-2 text-center text-xs text-gray-500 space-y-1">
-        <p>Este sitio no está afiliado a Ankama. Wakfu es una marca registrada de Ankama.</p>
+        <p>
+          Este sitio no está afiliado a Ankama. Wakfu es una marca registrada de
+          Ankama.
+        </p>
         <p>Desarrollado por Visama &amp; Peballo</p>
         <p>v{pkg.version}</p>
       </footer>
 
-      {builderDungeonId && builderResult && (() => {
-        const dungeon = dungeons.find((d) => d.id === builderDungeonId);
-        if (!dungeon) return null;
-        const completedCharIds = new Set(
-          (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
-        );
-        const chars = sortedChars.filter(
-          (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
-        );
-        return (
-          <TeamRecommendationModal
-            dungeonName={dungeon.name}
-            dungeon={dungeon}
-            result={builderResult}
-            incompleteChars={chars}
-            onAddTeam={addDungeonTeamReward}
-            onRerolear={handleBuilderRerolear}
-            presetChar={builderPresetChar}
-            onClose={() => { setBuilderDungeonId(null); setBuilderPresetChar(null); setBuilderResult(null); }}
-          />
-        );
-      })()}
+      {builderDungeonId &&
+        builderResult &&
+        (() => {
+          const dungeon = dungeons.find((d) => d.id === builderDungeonId);
+          if (!dungeon) return null;
+          const completedCharIds = new Set(
+            (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
+          );
+          const chars = sortedChars.filter(
+            (c) =>
+              !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+          );
+          return (
+            <TeamRecommendationModal
+              dungeonName={dungeon.name}
+              dungeon={dungeon}
+              result={builderResult}
+              incompleteChars={chars}
+              onAddTeam={addDungeonTeamReward}
+              onRerolear={handleBuilderRerolear}
+              presetChar={builderPresetChar}
+              onClose={() => {
+                setBuilderDungeonId(null);
+                setBuilderPresetChar(null);
+                setBuilderResult(null);
+              }}
+            />
+          );
+        })()}
       <Toaster />
     </Tabs>
   );
