@@ -8,6 +8,7 @@ const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
 const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
 
+// Mapea nombres de celdas de Google Sheets → nombres de mazmorras en la app
 const SPREADSHEET_TO_APP = {
   "Guarida de los Tejaroxores": "Cojonidas 🍯🦡",
   "Volcán Or'Hodruin": "Señor de la Llama 🦙🌋",
@@ -70,12 +71,7 @@ export default function App() {
   function handleOpenBuilder(dungeonId, presetChar) {
     setBuilderDungeonId(dungeonId);
     setBuilderPresetChar(presetChar);
-    const completedCharIds = new Set(
-      (dungRewardMap[dungeonId] || []).map((r) => r.char),
-    );
-    const chars = sortedChars.filter(
-      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
-    );
+    const chars = getAvailableChars(dungeonId);
     const dungeon = dungeons.find((d) => d.id === dungeonId);
     if (dungeon) {
       const result = recommendTeam(dungeon.name, chars);
@@ -90,12 +86,7 @@ export default function App() {
     setBuilderRerolearExcludedIds(newExcluded);
     const dungeon = dungeons.find((d) => d.id === builderDungeonId);
     if (!dungeon) return;
-    const completedCharIds = new Set(
-      (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
-    );
-    const chars = sortedChars.filter(
-      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
-    );
+    const chars = getAvailableChars(builderDungeonId);
     const filtered = chars.filter((c) => !newExcluded.has(c.id));
     const result = recommendTeam(dungeon.name, filtered);
     setBuilderResult(result);
@@ -216,6 +207,16 @@ export default function App() {
     await loadData();
   }
 
+  function getAvailableChars(dungeonId) {
+    const completedCharIds = new Set(
+      (dungRewardMap[dungeonId] || []).map((r) => r.char),
+    );
+    return sortedChars.filter(
+      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+    );
+  }
+
+  // Calcula los días/hasta que se reinicie el contador mensual (día 1 del mes siguiente)
   function countdown() {
     const now = new Date();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -254,6 +255,7 @@ export default function App() {
         .filter((c) => c.charrole !== "Padre Ausente")
         .map((c) => c.player),
     ),
+  // Orden personalizado: Peballo > Juanio > Visama, luego alfabético
   ].sort((a, b) => {
     const ordenManual = ["Peballo", "Juanio", "Visama"];
     const indexA = ordenManual.indexOf(a);
@@ -281,9 +283,9 @@ export default function App() {
       : sortedChars
   ).filter((c) => {
     const matchesRole = roleFilter ? c.charrole === roleFilter : true;
-    const matchesName = c?.char
-      ? c.char.toLowerCase().includes(searchCharacters.toLowerCase())
-      : false;
+    const matchesName = c.char
+      .toLowerCase()
+      .includes(searchCharacters.toLowerCase());
     return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
   });
 
@@ -513,13 +515,7 @@ export default function App() {
         (() => {
           const dungeon = dungeons.find((d) => d.id === builderDungeonId);
           if (!dungeon) return null;
-          const completedCharIds = new Set(
-            (dungRewardMap[builderDungeonId] || []).map((r) => r.char),
-          );
-          const chars = sortedChars.filter(
-            (c) =>
-              !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
-          );
+          const chars = getAvailableChars(builderDungeonId);
           return (
             <TeamRecommendationModal
               dungeonName={dungeon.name}

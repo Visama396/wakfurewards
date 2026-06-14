@@ -6,6 +6,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Detecta si el dispositivo tiene un puntero preciso (ratón) vs táctil
+// para decidir entre hover tooltips (desktop) y collapsibles (móvil)
 export function useIsFinePointer() {
   const [isFine, setIsFine] = useState(false);
 

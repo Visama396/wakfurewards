@@ -63,6 +63,7 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
         />
       </DrawerContent>
 
+      {/* Portal al body para que el tooltip no se corte por el overflow-y-auto del contenido */}
       {createPortal(
         <div
           ref={tooltipRef}

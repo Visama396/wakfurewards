@@ -64,17 +64,9 @@ export default function TeamRecommendationModal({
 
   function handleFill() {
     setSlots((prev) => {
-      const selectedIds = new Set(prev.filter(Boolean).map((c) => c.id));
-      const available = bestTeam.filter((c) => !selectedIds.has(c.id));
-      const next = [...prev];
-      let idx = 0;
-      for (let i = 0; i < next.length; i++) {
-        if (!next[i] && idx < available.length) {
-          next[i] = available[idx];
-          idx++;
-        }
-      }
-      return next;
+      const usedIds = new Set(prev.filter(Boolean).map((c) => c.id));
+      const remaining = bestTeam.filter((c) => !usedIds.has(c.id));
+      return prev.map((slot) => slot || remaining.shift() || null);
     });
   }
 
@@ -97,6 +89,7 @@ export default function TeamRecommendationModal({
     onClose();
   }
 
+  // Excluye al equipo actual y pide una nueva recomendación reroleando esos personajes
   function handleRerolear() {
     const teams = result.teams;
     if (!teams || teams.length === 0) return;
@@ -106,6 +99,7 @@ export default function TeamRecommendationModal({
     onRerolear(currentTeam.map((c) => c.id));
   }
 
+  // Vuelca el equipo recomendado en los slots de edición manual
   function handleMoverAbajo() {
     setSlots(bestTeam.slice(0, teamSize));
   }

@@ -273,7 +273,7 @@ export default function DungeonCard({
                       }}
                       className="w-12 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-0.5"
                     >
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      {STASIS_OPTIONS.map((n) => (
                         <option key={n} value={n}>
                           {n}
                         </option>
