@@ -758,7 +758,7 @@ export default function BuildsTab() {
     if (!recycleSearch) return items;
     const q = recycleSearch.toLowerCase();
     return items.filter((item) => item.name.toLowerCase().includes(q));
-  }, [recycleItemIds, recycleSearch]);
+  }, [recycleItemIds, recycleSearch, itemsLoaded]);
 
   /** Mapa: character id → builds */
   const charBuildMap = {};
