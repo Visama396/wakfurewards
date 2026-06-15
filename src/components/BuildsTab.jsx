@@ -171,8 +171,14 @@ function BuildCard({ build, itemLookup }) {
   const ROW_2_END = ["epic_sublimation"];
 
   function SlotIcon({ slotKey }) {
-    const itemId = build[slotKey];
-    const info = itemId ? itemLookup.get(itemId) : null;
+    let itemId = build[slotKey];
+    let info = itemId ? itemLookup.get(itemId) : null;
+    if (!info && slotKey === "first_weapon" && build["second_weapon"]) {
+      const mainWeapon = itemLookup.get(build["second_weapon"]);
+      if (mainWeapon && TWO_HANDED_TYPES.includes(mainWeapon.typeId)) {
+        info = mainWeapon;
+      }
+    }
     const slotDef = EQUIPMENT_SLOTS.find((s) => s.key === slotKey);
     const icon = info ? (
       <img
@@ -316,6 +322,8 @@ const HAS_ICON = new Set([
 const WEAPON_TYPES = [
   101, 108, 110, 111, 112, 113, 114, 115, 117, 223, 253, 254, 537,
 ];
+const TWO_HANDED_TYPES = [101, 111, 114, 117, 223, 253];
+const SECOND_HAND_TYPES = [112, 189];
 
 const ELEMENTAL_RES_IDS = new Set([82, 83, 84, 85, 90, 96, 97, 98]);
 
@@ -361,8 +369,8 @@ const SLOT_TYPE_IDS = {
   legs: [119],
   left_hand: [103],
   right_hand: [103],
-  first_weapon: WEAPON_TYPES,
-  second_weapon: WEAPON_TYPES,
+  first_weapon: SECOND_HAND_TYPES,
+  second_weapon: [101, 108, 110, 111, 113, 114, 115, 117, 223, 253, 254, 537],
   accessory: [646],
   mount: [611],
   pet: [582],
@@ -387,6 +395,7 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
   const [sockets, setSockets] = useState({});
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [search, setSearch] = useState("");
+  const [errorSlots, setErrorSlots] = useState(new Set());
 
   const levelMin = useMemo(() => {
     const idx = LEVEL_OPTIONS.indexOf(level);
@@ -442,13 +451,128 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
   }
 
   function handleSubmit() {
+    const errSlots = new Set();
+    let errMsg = "";
+
+    for (const [key, id] of Object.entries(equipment)) {
+      if (!id) continue;
+      if (key === "relic_sublimation" || key === "epic_sublimation") continue;
+      const item = allItems.find((i) => i.id === id);
+      if (!item) continue;
+
+      if (item.rarity === 6) {
+        for (const [k2, id2] of Object.entries(equipment)) {
+          if (k2 === key || k2 === "relic_sublimation" || k2 === "epic_sublimation") continue;
+          if (!id2) continue;
+          const other = allItems.find((i) => i.id === id2);
+          if (other?.rarity === 6) {
+            errSlots.add(key);
+            errSlots.add(k2);
+            errMsg = "Solo se permite una reliquia por build";
+          }
+        }
+      }
+
+      if (item.rarity === 7) {
+        for (const [k2, id2] of Object.entries(equipment)) {
+          if (k2 === key || k2 === "relic_sublimation" || k2 === "epic_sublimation") continue;
+          if (!id2) continue;
+          const other = allItems.find((i) => i.id === id2);
+          if (other?.rarity === 7) {
+            errSlots.add(key);
+            errSlots.add(k2);
+            errMsg = "Solo se permite una épica por build";
+          }
+        }
+      }
+
+      if (item.typeId === 103) {
+        const otherRing = key === "left_hand" ? "right_hand" : "left_hand";
+        if (equipment[otherRing] === id) {
+          errSlots.add(key);
+          errSlots.add(otherRing);
+          errMsg = "No se puede equipar el mismo anillo en ambas manos";
+        }
+      }
+    }
+
+    if (errSlots.size > 0) {
+      setErrorSlots(errSlots);
+      if (errMsg) toast.error(errMsg);
+      return;
+    }
+
     onAddBuild(character.id, level, equipment, sockets);
     onClose();
   }
 
   function handleSelectItem(item) {
-    setEquipment((prev) => ({ ...prev, [selectedSlot]: item.id }));
-    setEquipmentGfx((prev) => ({ ...prev, [selectedSlot]: item.gfxId }));
+    const errSlots = new Set();
+
+    if (item.rarity === 6) {
+      for (const [key, id] of Object.entries(equipment)) {
+        if (key === selectedSlot || key === "relic_sublimation" || key === "epic_sublimation") continue;
+        if (!id) continue;
+        const existing = allItems.find((i) => i.id === id);
+        if (existing?.rarity === 6) {
+          errSlots.add(key);
+          errSlots.add(selectedSlot);
+        }
+      }
+    }
+
+    if (item.rarity === 7) {
+      for (const [key, id] of Object.entries(equipment)) {
+        if (key === selectedSlot || key === "relic_sublimation" || key === "epic_sublimation") continue;
+        if (!id) continue;
+        const existing = allItems.find((i) => i.id === id);
+        if (existing?.rarity === 7) {
+          errSlots.add(key);
+          errSlots.add(selectedSlot);
+        }
+      }
+    }
+
+    if (item.typeId === 103) {
+      const otherRing =
+        selectedSlot === "left_hand" ? "right_hand" : "left_hand";
+      if (equipment[otherRing] === item.id) {
+        errSlots.add(otherRing);
+        errSlots.add(selectedSlot);
+      }
+    }
+
+    if (errSlots.size > 0) {
+      setErrorSlots(errSlots);
+      return;
+    }
+
+    setErrorSlots(new Set());
+
+    let eqUpdate = { ...equipment, [selectedSlot]: item.id };
+    let gfxUpdate = { ...equipmentGfx, [selectedSlot]: item.gfxId };
+
+    if (
+      selectedSlot === "second_weapon" &&
+      TWO_HANDED_TYPES.includes(item.typeId)
+    ) {
+      delete eqUpdate["first_weapon"];
+      gfxUpdate["first_weapon"] = item.gfxId;
+    } else if (selectedSlot === "second_weapon") {
+      delete gfxUpdate["first_weapon"];
+    } else if (selectedSlot === "first_weapon") {
+      const principalId = equipment["second_weapon"];
+      if (principalId) {
+        const principalItem = allItems.find((i) => i.id === principalId);
+        if (principalItem && TWO_HANDED_TYPES.includes(principalItem.typeId)) {
+          delete eqUpdate["second_weapon"];
+          delete gfxUpdate["second_weapon"];
+        }
+      }
+    }
+
+    setEquipment(eqUpdate);
+    setEquipmentGfx(gfxUpdate);
     setSearch("");
     if (SOCKET_SLOTS.has(selectedSlot) && !sockets[selectedSlot]) {
       setSockets((prev) => ({
@@ -505,12 +629,15 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
                     );
                     setSearch(item?.name || "");
                     setLevel(200);
+                    setErrorSlots(new Set());
                   }}
                   title={slot.label}
                   className={`relative flex flex-col items-center gap-0.5 p-1 rounded cursor-pointer transition-colors ${
-                    isSelected
+                    isSelected && !errorSlots.has(slot.key)
                       ? "bg-orange-400/20 ring-1 ring-orange-400"
-                      : "hover:bg-white/5"
+                      : errorSlots.has(slot.key)
+                        ? "bg-red-400/20 ring-1 ring-red-500"
+                        : "hover:bg-white/5"
                   }`}
                 >
                   {equipmentGfx[slot.key] ? (
