@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import * as db from "@/lib/db";
 import ClassIcon from "@/components/ClassIcon";
-import { Drawer, DrawerContent, DrawerClose } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { extractItemInfo, parseItemStats, getStatIcon } from "@/lib/itemStats";
 import TrashIcon from "@/components/TrashIcon";
@@ -462,6 +462,9 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
     <Drawer open onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col h-[65dvh] mt-0">
         <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
+          <DrawerTitle className="sr-only">
+            Crear build para {character.char}
+          </DrawerTitle>
           <h3 className="text-lg font-semibold text-orange-300">
             Crear build para {character.char}
           </h3>
