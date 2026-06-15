@@ -30,18 +30,18 @@ const SOCKET_SLOTS = new Set([
 
 /** All equipment slots display order and labels */
 const EQUIPMENT_SLOTS = [
-  { key: "head", label: "Cabeza" },
-  { key: "neck", label: "Cuello" },
-  { key: "chest", label: "Pecho" },
-  { key: "back", label: "Espalda" },
-  { key: "shoulders", label: "Hombros" },
+  { key: "head", label: "Casco" },
+  { key: "neck", label: "Amuleto" },
+  { key: "chest", label: "Coraza" },
+  { key: "back", label: "Capa" },
+  { key: "shoulders", label: "Hombreras" },
   { key: "belt", label: "Cinturón" },
-  { key: "legs", label: "Piernas" },
-  { key: "left_hand", label: "Mano Izq." },
-  { key: "right_hand", label: "Mano Der." },
-  { key: "first_weapon", label: "Arma 1" },
-  { key: "second_weapon", label: "Arma 2" },
-  { key: "accessory", label: "Accesorio" },
+  { key: "legs", label: "Botas" },
+  { key: "left_hand", label: "Anillo Izq." },
+  { key: "right_hand", label: "Anillo Der." },
+  { key: "first_weapon", label: "Secundaria" },
+  { key: "second_weapon", label: "Principal" },
+  { key: "accessory", label: "Emblema" },
   { key: "mount", label: "Montura" },
   { key: "pet", label: "Mascota" },
   { key: "relic_sublimation", label: "Reliquia" },
@@ -402,7 +402,9 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
       .filter(
         (item) =>
           !recycleItemIds.has(item.id) &&
-          RARITY_FILTER.includes(item.rarity) &&
+          (selectedSlot === "mount" ||
+            selectedSlot === "pet" ||
+            RARITY_FILTER.includes(item.rarity)) &&
           (selectedSlot === "mount" ||
             selectedSlot === "pet" ||
             selectedSlot === "relic_sublimation" ||
