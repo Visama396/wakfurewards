@@ -1,7 +1,9 @@
-// Fichas de hechizos por mazmorra. key: nombre normalizado del hechizo.
-// Solo usamos <span> con clases block/flex para evitar HTML inválido
-// (un <div> dentro de un <span> hace que el navegador cierre el span).
+import { normalizeDungeonName } from "@/lib/utils";
 
+/**
+ * Colores de elementos para etiquetas de hechizos y referencias inline.
+ * label: color del texto del elemento. ref: color del borde subrayado del spell-ref.
+ */
 const ELEMENT_COLORS = {
   Aire: {
     label: "text-fuchsia-400",
@@ -15,6 +17,12 @@ const ELEMENT_COLORS = {
   Agua: { label: "text-blue-400", ref: "text-blue-300 border-blue-400/60" },
 };
 
+/**
+ * Fichas de hechizos por mazmorra.
+ * key: nombre normalizado del hechizo (coincide con lo que va dentro de << >> en RAW_GUIDES).
+ * Sólo usamos <span> con clases block/flex para evitar HTML inválido
+ * (un <div> dentro de un <span> hace que el navegador cierre el span).
+ */
 export const SPELLS = {
   cojonidas: {
     garras: {
@@ -67,20 +75,17 @@ export const SPELLS = {
   },
 };
 
-// Reemplaza <<Nombre>> por un span con data-atributos.
-// El tooltip lo renderiza DungeonGuideModal con React (portal al body)
-// para evitar que el overflow-y-auto del modal lo corte.
+/**
+ * Reemplaza <<Nombre>> en el HTML por spans con data-atributos.
+ * El tooltip lo renderiza DungeonGuideModal con React (portal al body)
+ * para evitar que el overflow-y-auto del modal lo corte.
+ */
 function injectSpellTooltips(html, dungeonKey) {
   const spells = SPELLS[dungeonKey];
   if (!spells) return html;
 
   return html.replace(/<<([^>]+)>>/g, (match, name) => {
-    const spellKey = name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/['']/g, "")
-      .replace(/[^a-z0-9]/g, "");
+    const spellKey = normalizeDungeonName(name);
 
     const spell = spells[spellKey];
     if (!spell) return match;
@@ -92,7 +97,10 @@ function injectSpellTooltips(html, dungeonKey) {
   });
 }
 
-// Guías de mazmorras en formato HTML (sin processar, con <<Hechizo>>).
+/**
+ * Guías de mazmorras en HTML sin procesar (con marcadores <<Hechizo>>).
+ * Las guías se inyectan con dangerouslySetInnerHTML en DungeonGuideModal.
+ */
 const RAW_GUIDES = {
   cojonidas: `
     <div class="flex flex-col-reverse sm:flex-row gap-3 mb-3">
@@ -111,15 +119,13 @@ const RAW_GUIDES = {
   `,
 };
 
-// Normaliza el nombre igual que en dungeonProfiles para buscar la guía
+/**
+ * Busca y procesa la guía de una mazmorra por su nombre.
+ * Normaliza el nombre igual que dungeonProfiles, luego inyecta tooltips de hechizos.
+ * Devuelve HTML procesado o null si no hay guía.
+ */
 export function getGuide(dungeonName) {
-  const key = dungeonName
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]/g, "");
-
+  const key = normalizeDungeonName(dungeonName);
   const raw = RAW_GUIDES[key];
   if (!raw) return null;
 

@@ -1,10 +1,10 @@
-// Mapeo de nombre de mazmorra a su ícono personalizado
+/** Mapeo de nombre de mazmorra a su ícono personalizado */
 const DUNGEON_ICONS = {
   "Cojonidas 🍯🦡": "/cojonidas.webp",
   "Señor de la Llama 🦙🌋": "/saurhon.webp",
 };
 
-// Muestra el ícono de una mazmorra si tiene imagen personalizada
+/** Muestra el ícono de una mazmorra si tiene imagen personalizada, o un placeholder gris */
 export default function DungeonIcon({ name }) {
   const src = DUNGEON_ICONS[name];
   if (!src)

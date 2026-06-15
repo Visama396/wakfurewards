@@ -1,3 +1,4 @@
+/** Filtro de roles: botones coloreados para filtrar por rol (mele/distancia/apoyo/xD) */
 export default function RoleSelector({
   availableRoles = [],
   roleFilter,

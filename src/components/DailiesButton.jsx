@@ -9,6 +9,11 @@ import {
 } from "@/components/ui/collapsible";
 import { useIsFinePointer } from "@/lib/utils";
 
+/**
+ * Botón/info de rotaciones diarias.
+ * Muestra mazmorras DJ y Modulox del día desde Google Sheets.
+ * En desktop usa tooltip hover; en móvil usa collapsible expandible.
+ */
 export default function DailiesButton({
   dailyDungeons = new Set(),
   moduloxDungeons = new Set(),

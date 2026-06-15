@@ -20,6 +20,15 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 
+/**
+ * Tarjeta de personaje con:
+ * - Ícono de clase, nombre, clase, rol
+ * - Botón "+Añadir" para añadir recompensa → popover con combobox de mazmorras
+ * - Botón "Al Builder" si hay mazmorra seleccionada
+ * - Botón "Ocultar" (EyeOff) para enviar a Padre Ausente
+ * - Drag para arrastrar a una tarjeta de mazmorra (solo desktop)
+ * - Tooltip con mazmorras pendientes
+ */
 export default function CharacterCard({
   character,
   onAddReward,
@@ -37,6 +46,7 @@ export default function CharacterCard({
   const [selectedDung, setSelectedDung] = useState(null);
   const [selectedStasis, setSelectedStasis] = useState(1);
 
+  /** Añade recompensa con la mazmorra y estasis seleccionados */
   function handleSubmit() {
     if (!selectedDung) return;
     onAddReward(selectedDung.id, character.id, selectedStasis);
@@ -45,6 +55,10 @@ export default function CharacterCard({
     setSelectedStasis(1);
   }
 
+  /**
+   * Inicia el drag-and-drop. Crea un clon fantasma para la imagen de arrastre
+   * porque el elemento original podría tener estilos que no se ven bien en el ghost.
+   */
   function handleDragStart(e) {
     e.dataTransfer.setData("text/plain", character.id.toString());
     e.dataTransfer.effectAllowed = "copy";

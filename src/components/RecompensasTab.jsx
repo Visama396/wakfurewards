@@ -15,6 +15,12 @@ import {
 import { STASIS_OPTIONS } from "@/lib/constants";
 import { useIsFinePointer } from "@/lib/utils";
 
+/**
+ * Pestaña principal de recompensas.
+ * Layout de dos columnas: personajes (izquierda) y mazmorras (derecha).
+ * Soporta drag-and-drop de personajes a mazmorras para añadir recompensas rápido.
+ * Incluye filtros por jugador, rol, búsqueda por nombre, y picker de mazmorra al soltar.
+ */
 export default function RecompensasTab({
   searchFilteredInactives,
   inactivePlayers,
@@ -51,6 +57,11 @@ export default function RecompensasTab({
   const [pickerDungeon, setPickerDungeon] = useState(null);
   const [pickerStasis, setPickerStasis] = useState(1);
 
+  /**
+   * Convierte el scroll vertical del ratón en scroll horizontal
+   * para la fila de tarjetas de mazmorra (UX más natural).
+   * Respeta elementos con clase .vertical-scroll para no interferir.
+   */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -65,6 +76,7 @@ export default function RecompensasTab({
     return () => el.removeEventListener("wheel", onWheel);
   });
 
+  /** Calcula la posición de inserción basada en la coordenada X del cursor */
   function handleListDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -92,6 +104,7 @@ export default function RecompensasTab({
     setDragCharId(null);
   }
 
+  /** Al soltar un personaje, muestra el picker de mazmorra */
   function handleListDrop(e) {
     e.preventDefault();
     const charId = parseInt(e.dataTransfer.getData("text/plain"));
@@ -102,6 +115,7 @@ export default function RecompensasTab({
     setShowDungeonPicker(true);
   }
 
+  /** Confirma la recompensa desde el picker de arrastre */
   function handlePickerSubmit() {
     if (!pickerDungeon || !dragCharId) return;
     addDungeonReward(pickerDungeon.id, dragCharId, pickerStasis);
@@ -120,6 +134,7 @@ export default function RecompensasTab({
       d.name.toLowerCase().includes(dungeonFilter.toLowerCase()),
   );
 
+  /** Placeholder visual que se muestra al arrastrar un personaje sobre la lista */
   function renderPlaceholder() {
     if (showDungeonPicker) {
       return (
@@ -264,7 +279,7 @@ export default function RecompensasTab({
               const items = [];
               if (listDragOver && listInsertIdx === i) {
                 items.push(
-                  <Fragment key="placeholder">
+                  <Fragment key={`placeholder-${i}`}>
                     {renderPlaceholder()}
                   </Fragment>,
                 );

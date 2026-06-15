@@ -8,7 +8,11 @@ const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
 const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
 
-// Mapea nombres de celdas de Google Sheets → nombres de mazmorras en la app
+/**
+ * Mapea nombres de celdas de Google Sheets (valor crudo de celda D4:D25)
+ * a los nombres de mazmorras con emoji que se muestran en la app.
+ * Esto permite que la rotación diaria de Google Sheets se refleje en la UI.
+ */
 const SPREADSHEET_TO_APP = {
   "Guarida de los Tejaroxores": "Cojonidas 🍯🦡",
   "Volcán Or'Hodruin": "Señor de la Llama 🦙🌋",
@@ -50,6 +54,7 @@ export default function App() {
   const [characters, setCharacters] = useState([]);
   const [dungeons, setDungeons] = useState([]);
   const [rewards, setRewards] = useState([]);
+  const [builds, setBuilds] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [playerFilter, setPlayerFilter] = useState(null);
@@ -68,6 +73,7 @@ export default function App() {
   );
   const [menuOpen, setMenuOpen] = useState(false);
 
+  /** Abre el modal del builder con la recomendación de equipo para una mazmorra */
   function handleOpenBuilder(dungeonId, presetChar) {
     setBuilderDungeonId(dungeonId);
     setBuilderPresetChar(presetChar);
@@ -80,6 +86,10 @@ export default function App() {
     setBuilderRerolearExcludedIds(new Set());
   }
 
+  /**
+   * Vuelve a recomendar equipo excluyendo a los personajes del equipo actual.
+   * Esto permite "rerolear" para encontrar combinaciones alternativas.
+   */
   function handleBuilderRerolear(teamCharIds) {
     const newExcluded = new Set(builderRerolearExcludedIds);
     teamCharIds.forEach((id) => newExcluded.add(id));
@@ -135,18 +145,22 @@ export default function App() {
     };
   }, []);
 
+  /** Carga todos los datos de Supabase: personajes, mazmorras, recompensas y builds */
   async function loadData() {
-    const [c, d, r] = await Promise.all([
+    const [c, d, r, b] = await Promise.all([
       supabase.from("wakfuchars").select("*").order("id"),
       supabase.from("wakfudungs").select("*").order("id"),
       supabase.from("wakfurewards").select("*"),
+      supabase.from("wakfubuilds").select(`*, wakfubuild_sockets (*)`),
     ]);
     if (c.data) setCharacters(c.data);
     if (d.data) setDungeons(d.data);
     if (r.data) setRewards(r.data);
+    if (b.data) setBuilds(b.data);
     setLoading(false);
   }
 
+  /** Elimina una recompensa de Supabase y recarga */
   async function deleteReward(id) {
     const reward = rewards.find((r) => r.id === id);
     const char = reward ? charMap[reward.char] : null;
@@ -161,6 +175,7 @@ export default function App() {
     }
   }
 
+  /** Reinicia todas las recompensas del mes (pide confirmación) */
   async function resetRewards() {
     if (
       !window.confirm(
@@ -172,6 +187,7 @@ export default function App() {
     await supabase.from("wakfurewards").delete().gt("id", 0);
   }
 
+  /** Actualiza el valor de estasis de una recompensa */
   async function updateStasis(id, val) {
     const { error } = await supabase
       .from("wakfurewards")
@@ -184,6 +200,7 @@ export default function App() {
     await loadData();
   }
 
+  /** Alterna el rol de un personaje entre "Padre Ausente" y "xD" */
   async function togglePadreAusente(character) {
     const nuevoRol =
       character.charrole === "Padre Ausente" ? "xD" : "Padre Ausente";
@@ -207,6 +224,7 @@ export default function App() {
     await loadData();
   }
 
+  /** Filtra personajes no inactivos que aún no han completado esta mazmorra */
   function getAvailableChars(dungeonId) {
     const completedCharIds = new Set(
       (dungRewardMap[dungeonId] || []).map((r) => r.char),
@@ -216,7 +234,7 @@ export default function App() {
     );
   }
 
-  // Calcula los días/hasta que se reinicie el contador mensual (día 1 del mes siguiente)
+  /** Calcula los días/hasta el reinicio mensual (día 1 del mes siguiente) */
   function countdown() {
     const now = new Date();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -227,35 +245,39 @@ export default function App() {
     return `Quedan ${hours} horas`;
   }
 
+  /** Mapa: charId → recompensas (para lookup rápido) */
   const rewardMap = {};
   rewards.forEach((r) => {
     if (!rewardMap[r.char]) rewardMap[r.char] = [];
     rewardMap[r.char].push(r);
   });
 
+  /** Mapa: charId → datos del personaje (para lookup rápido, evitando .find()) */
   const charMap = {};
   characters.forEach((c) => {
     charMap[c.id] = c;
   });
 
+  /** Mapa: dungId → recompensas (para lookup rápido) */
   const dungRewardMap = {};
   rewards.forEach((r) => {
     if (!dungRewardMap[r.dung]) dungRewardMap[r.dung] = [];
     dungRewardMap[r.dung].push(r);
   });
 
+  /** Personajes ordenados por jugador y nombre */
   const sortedChars = [...characters].sort((a, b) => {
     if (a.player !== b.player) return a.player.localeCompare(b.player);
     return a.char.localeCompare(b.char);
   });
 
+  /** Lista de jugadores activos (sin Padre Ausente) con orden manual: Peballo > Juanio > Visama */
   const inactivePlayers = [
     ...new Set(
       sortedChars
         .filter((c) => c.charrole !== "Padre Ausente")
         .map((c) => c.player),
     ),
-  // Orden personalizado: Peballo > Juanio > Visama, luego alfabético
   ].sort((a, b) => {
     const ordenManual = ["Peballo", "Juanio", "Visama"];
     const indexA = ordenManual.indexOf(a);
@@ -291,6 +313,7 @@ export default function App() {
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
+  /** Añade una recompensa individual a una mazmorra */
   async function addDungeonReward(dungId, charId, stasis) {
     const payload = {
       char: parseInt(charId),
@@ -312,6 +335,7 @@ export default function App() {
     loadData();
   }
 
+  /** Añade recompensas para un equipo completo a una mazmorra (insert múltiple) */
   async function addDungeonTeamReward(dungId, teamMembers, stasis) {
     if (!teamMembers || teamMembers.length === 0) {
       toast.error("No hay personajes para añadir");
@@ -331,6 +355,54 @@ export default function App() {
     const dung = dungeons.find((d) => d.id === parseInt(dungId));
     toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
     loadData();
+  }
+
+  /** Crea un build con equipamiento y sockets */
+  async function addBuild(characterId, level, equipment, socketsData) {
+    const cleanEq = {};
+    for (const [key, val] of Object.entries(equipment)) {
+      if (val?.trim()) cleanEq[key] = val.trim();
+    }
+
+    const { data: build, error } = await supabase
+      .from("wakfubuilds")
+      .insert({ character: parseInt(characterId), level: parseInt(level), ...cleanEq })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Error al crear build: " + error.message);
+      return;
+    }
+
+    const socketInserts = [];
+    for (const [eq, slots] of Object.entries(socketsData)) {
+      for (const slot of slots) {
+        if (slot.level > 0) {
+          socketInserts.push({
+            build_id: build.id,
+            equipment: eq,
+            slot_index: slot.slot_index,
+            level: slot.level,
+            color: slot.color,
+          });
+        }
+      }
+    }
+
+    if (socketInserts.length > 0) {
+      const { error: sockErr } = await supabase
+        .from("wakfubuild_sockets")
+        .insert(socketInserts);
+      if (sockErr) {
+        toast.error("Build creada pero error en sockets: " + sockErr.message);
+        return;
+      }
+    }
+
+    loadData();
+    const char = charMap[characterId];
+    toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
   }
 
   if (loading) {
@@ -490,7 +562,11 @@ export default function App() {
       </TabsContent>
 
       <TabsContent value="builds" className={tabContentClass}>
-        <BuildsTab />
+        <BuildsTab
+          builds={builds}
+          characters={characters}
+          onAddBuild={addBuild}
+        />
       </TabsContent>
 
       <TabsContent value="guias" className={tabContentClass}>

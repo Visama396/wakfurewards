@@ -1,3 +1,4 @@
+/** Filtro de jugadores: botones para filtrar personajes por jugador */
 export default function FilterBar({ players = [], currentFilter, onFilter }) {
   return (
     <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 px-1 horizontal-scroll w-full">

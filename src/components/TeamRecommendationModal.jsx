@@ -17,6 +17,12 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
+/**
+ * Modal (drawer) de recomendación de equipo.
+ * Dos modos: equipo recomendado (recomendación automática) y equipo personalizado (edición manual).
+ * Incluye botones Rerolear (excluir equipo actual), Mover abajo (copiar a slots manuales),
+ * Rellenar (auto-completar slots con recomendados), y Añadir equipo (insert masivo).
+ */
 export default function TeamRecommendationModal({
   dungeonName,
   dungeon,
@@ -41,12 +47,14 @@ export default function TeamRecommendationModal({
   const [recommendedStasis, setRecommendedStasis] = useState(1);
   const [customStasis, setCustomStasis] = useState(1);
 
+  /** Actualiza un slot manual con un personaje */
   function handleSlotChange(index, character) {
     const newSlots = [...slots];
     newSlots[index] = character;
     setSlots(newSlots);
   }
 
+  /** Filtra personajes no seleccionados en otros slots (evita duplicados en el combobox) */
   function getAvailableChars(slotIndex) {
     const selectedIds = new Set(
       slots
@@ -57,11 +65,13 @@ export default function TeamRecommendationModal({
     return incompleteChars.filter((c) => !selectedIds.has(c.id));
   }
 
+  /** Añade el equipo recomendado completo como recompensa */
   function handleAddRecommendedTeam() {
     onAddTeam(dungeon.id, bestTeam, recommendedStasis);
     onClose();
   }
 
+  /** Auto-completa slots vacíos con personajes del equipo recomendado */
   function handleFill() {
     setSlots((prev) => {
       const usedIds = new Set(prev.filter(Boolean).map((c) => c.id));
@@ -70,6 +80,7 @@ export default function TeamRecommendationModal({
     });
   }
 
+  /** Añade el equipo personalizado (rellena huecos con recomendados si es necesario) */
   function handleAddCustomTeam() {
     const selectedIds = new Set(slots.filter(Boolean).map((c) => c.id));
     const filledSlots = slots.map((slot) => {
@@ -89,7 +100,7 @@ export default function TeamRecommendationModal({
     onClose();
   }
 
-  // Excluye al equipo actual y pide una nueva recomendación reroleando esos personajes
+  /** Excluye al equipo actual y pide una nueva recomendación */
   function handleRerolear() {
     const teams = result.teams;
     if (!teams || teams.length === 0) return;
@@ -99,7 +110,7 @@ export default function TeamRecommendationModal({
     onRerolear(currentTeam.map((c) => c.id));
   }
 
-  // Vuelca el equipo recomendado en los slots de edición manual
+  /** Vuelca el equipo recomendado en los slots de edición manual */
   function handleMoverAbajo() {
     setSlots(bestTeam.slice(0, teamSize));
   }

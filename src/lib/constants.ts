@@ -1,7 +1,7 @@
-// Opciones de estasis (1-10) para selects de recompensa
+/** Opciones de estasis (1-10) para selects de recompensa */
 export const STASIS_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1);
 
-// Colores de fondo para cada rol en las etiquetas
+/** Colores de fondo para cada rol en las etiquetas RoleBadge */
 export const ROLE_COLORS = {
   mele: "bg-red-700",
   distancia: "bg-blue-700",

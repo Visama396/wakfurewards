@@ -7,11 +7,22 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
+/**
+ * Modal (drawer) de guía de mazmorra con tooltips de hechizos.
+ * El contenido HTML se inyecta con dangerouslySetInnerHTML.
+ * Los tooltips de hechizos se renderizan mediante un portal al body
+ * para evitar que el overflow-y-auto del contenedor los recorte.
+ *
+ * Los spans .spell-ref se generan en injectSpellTooltips() (dungeonGuides.js)
+ * con data-atributos data-dungeon y data-spell que este componente lee
+ * para buscar la ficha del hechizo en SPELLS.
+ */
 export default function DungeonGuideModal({ dungeonName, html, onClose }) {
   const tooltipRef = useRef(null);
   const hideTimer = useRef(null);
   const contentRef = useRef(null);
 
+  /** Registra eventos mouseover/mouseout en el contenido para mostrar/ocultar tooltips */
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
@@ -63,7 +74,11 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
         />
       </DrawerContent>
 
-      {/* Portal al body para que el tooltip no se corte por el overflow-y-auto del contenido */}
+      {/*
+       * Portal al body para que el tooltip no se corte por el overflow-y-auto del contenido.
+       * Se posiciona con fixed y transform: translateX(-50%) para centrar horizontalmente.
+       * Tiene pointer-events-auto para permitir hover sobre el tooltip sin que desaparezca.
+       */}
       {createPortal(
         <div
           ref={tooltipRef}

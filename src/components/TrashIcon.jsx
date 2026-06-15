@@ -1,4 +1,4 @@
-// Ícono de papelera
+/** Ícono SVG de papelera */
 export default function TrashIcon({ className = "w-3.5 h-3.5" }) {
   return (
     <svg

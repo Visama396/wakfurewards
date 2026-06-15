@@ -26,6 +26,14 @@ import { useIsFinePointer } from "@/lib/utils";
 import TeamRecommendationModal from "@/components/TeamRecommendationModal";
 import DungeonGuideModal from "@/components/DungeonGuideModal";
 
+/**
+ * Tarjeta de mazmorra con:
+ * - Cabecera: nombre, ícono, total de cofres, botón + para añadir
+ * - Botones Equipo (recomendar) y Guía
+ * - Lista de recompensas con select de estasis y botón de eliminar
+ * - Drag-and-drop para añadir personajes desde CharacterCard
+ * - Resaltado visual si es DJ diaria (amarillo) o Modulox (azul) o ambas (púrpura)
+ */
 export default function DungeonCard({
   dungeon,
   rewards,
@@ -52,6 +60,7 @@ export default function DungeonCard({
 
   const isDaily = highlightedDungeonNames.has(dungeon.name);
   const isModulox = moduloxDungeonNames.has(dungeon.name);
+  /** Gradiente de fondo según tipo de rotación */
   const variantClass =
     isDaily && isModulox
       ? "bg-gradient-to-br from-yellow-500/15 to-sky-500/15 ring-1 ring-inset ring-purple-400/40"
@@ -66,6 +75,7 @@ export default function DungeonCard({
     (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
   );
 
+  /** Añade el personaje seleccionado al popover como recompensa */
   function handleSubmit() {
     if (!selectedChar) return;
     onAdd(dungeon.id, selectedChar.id, selectedStasis);
@@ -74,6 +84,7 @@ export default function DungeonCard({
     setSelectedStasis(1);
   }
 
+  /** Abre el modal de recomendación de equipo */
   function handleRecommend(char) {
     setPresetChar(char || null);
     const result = recommendTeam(dungeon.name, incompleteChars);
@@ -82,6 +93,7 @@ export default function DungeonCard({
     setShowRecommender(true);
   }
 
+  /** Excluye los miembros del equipo actual y busca alternativas */
   function handleRerolear(teamCharIds) {
     const newExcluded = new Set(rerolearExcludedIds);
     teamCharIds.forEach((id) => newExcluded.add(id));
