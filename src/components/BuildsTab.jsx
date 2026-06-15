@@ -823,6 +823,8 @@ export default function BuildsTab() {
   const [recycleItemIds, setRecycleItemIds] = useState(new Set());
   const [creatingForChar, setCreatingForChar] = useState(null);
   const [recycleSearch, setRecycleSearch] = useState("");
+  const [characterFilter, setCharacterFilter] = useState("");
+  const scrollRef = useRef(null);
   const allItems = useRef([]);
   const [itemsLoaded, setItemsLoaded] = useState(false);
 
@@ -920,11 +922,42 @@ export default function BuildsTab() {
       return a.char.localeCompare(b.char);
     });
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onWheel(e) {
+      if (e.target.closest(".vertical-scroll")) return;
+      if (e.deltaY !== 0) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const filteredChars = characterFilter
+    ? activeChars.filter((c) =>
+        c.char.toLowerCase().includes(characterFilter.toLowerCase()),
+      )
+    : activeChars;
+
   return (
     <>
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 items-start">
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 flex-1 min-h-0 items-start content-start">
-          {activeChars.map((char) => {
+        <div className="flex flex-col flex-1 min-h-0 min-w-0">
+          <input
+            type="text"
+            placeholder="Filtrar personaje..."
+            value={characterFilter}
+            onChange={(e) => setCharacterFilter(e.target.value)}
+            className="mb-3 w-full bg-[#163544] border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-orange-300"
+          />
+          <div
+            ref={scrollRef}
+            className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
+          >
+            {filteredChars.map((char) => {
             const charBuilds = charBuildMap[char.id];
             return (
               <div
@@ -967,6 +1000,7 @@ export default function BuildsTab() {
               </div>
             );
           })}
+          </div>
         </div>
 
         <div className="w-full lg:w-60 shrink-0 lg:border-l border-gray-700/40 lg:pl-4 space-y-2">
