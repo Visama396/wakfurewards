@@ -559,7 +559,9 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
       delete eqUpdate["first_weapon"];
       gfxUpdate["first_weapon"] = item.gfxId;
     } else if (selectedSlot === "second_weapon") {
-      delete gfxUpdate["first_weapon"];
+      if (!equipment["first_weapon"]) {
+        delete gfxUpdate["first_weapon"];
+      }
     } else if (selectedSlot === "first_weapon") {
       const principalId = equipment["second_weapon"];
       if (principalId) {
