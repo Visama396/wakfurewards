@@ -55,6 +55,7 @@ export default function App() {
   const [dungeons, setDungeons] = useState([]);
   const [rewards, setRewards] = useState([]);
   const [builds, setBuilds] = useState([]);
+  const [recycleItemIds, setRecycleItemIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
 
   const [playerFilter, setPlayerFilter] = useState(null);
@@ -147,16 +148,18 @@ export default function App() {
 
   /** Carga todos los datos de Supabase: personajes, mazmorras, recompensas y builds */
   async function loadData() {
-    const [c, d, r, b] = await Promise.all([
+    const [c, d, r, b, ri] = await Promise.all([
       supabase.from("wakfuchars").select("*").order("id"),
       supabase.from("wakfudungs").select("*").order("id"),
       supabase.from("wakfurewards").select("*"),
       supabase.from("wakfubuilds").select(`*, wakfubuild_sockets (*)`),
+      supabase.from("recycleitems").select("item_id"),
     ]);
     if (c.data) setCharacters(c.data);
     if (d.data) setDungeons(d.data);
     if (r.data) setRewards(r.data);
     if (b.data) setBuilds(b.data);
+    if (ri.data) setRecycleItemIds(new Set(ri.data.map((row) => row.item_id)));
     setLoading(false);
   }
 
@@ -361,7 +364,7 @@ export default function App() {
   async function addBuild(characterId, level, equipment, socketsData) {
     const cleanEq = {};
     for (const [key, val] of Object.entries(equipment)) {
-      if (val?.trim()) cleanEq[key] = val.trim();
+      if (val) cleanEq[key] = typeof val === "string" ? val.trim() : val;
     }
 
     const { data: build, error } = await supabase
@@ -403,6 +406,24 @@ export default function App() {
     loadData();
     const char = charMap[characterId];
     toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
+  }
+
+  async function addRecycleItem(itemId) {
+    const { error } = await supabase.from("recycleitems").insert({ item_id: parseInt(itemId) });
+    if (error) { toast.error("Error al añadir a reciclaje: " + error.message); return; }
+    setRecycleItemIds((prev) => new Set(prev).add(parseInt(itemId)));
+    toast.success("Ítem añadido a reciclaje");
+  }
+
+  async function removeRecycleItem(itemId) {
+    const { error } = await supabase.from("recycleitems").delete().eq("item_id", parseInt(itemId));
+    if (error) { toast.error("Error al eliminar de reciclaje: " + error.message); return; }
+    setRecycleItemIds((prev) => {
+      const next = new Set(prev);
+      next.delete(parseInt(itemId));
+      return next;
+    });
+    toast.success("Ítem eliminado de reciclaje");
   }
 
   if (loading) {
@@ -566,6 +587,9 @@ export default function App() {
           builds={builds}
           characters={characters}
           onAddBuild={addBuild}
+          recycleItemIds={recycleItemIds}
+          onAddRecycleItem={addRecycleItem}
+          onRemoveRecycleItem={removeRecycleItem}
         />
       </TabsContent>
 
