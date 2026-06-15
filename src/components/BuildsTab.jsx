@@ -3,6 +3,7 @@ import ClassIcon from "@/components/ClassIcon";
 import { Drawer, DrawerContent, DrawerClose } from "@/components/ui/drawer";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { extractItemInfo, parseItemStats, getStatIcon } from "@/lib/itemStats";
+import TrashIcon from "@/components/TrashIcon";
 
 const SOCKET_COLORS = {
   red: "bg-red-500",
@@ -291,6 +292,7 @@ const STAT_ICON_BASE =
 const LEVEL_OPTIONS = [
   20, 35, 50, 65, 80, 95, 110, 125, 140, 155, 170, 185, 200, 215, 230, 245,
 ];
+const RARITY_FILTER = [3, 4, 5, 6, 7];
 
 const HAS_ICON = new Set([
   "head",
@@ -376,7 +378,7 @@ function createDefaultSockets() {
 }
 
 /** Form drawer for creating a new build */
-function BuildFormDrawer({ character, onAddBuild, onClose, allItems }) {
+function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItemIds, onAddRecycleItem }) {
   const [level, setLevel] = useState(200);
   const [equipment, setEquipment] = useState({});
   const [equipmentGfx, setEquipmentGfx] = useState({});
@@ -397,6 +399,8 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems }) {
     return allItems
       .filter(
         (item) =>
+          !recycleItemIds.has(item.id) &&
+          RARITY_FILTER.includes(item.rarity) &&
           (selectedSlot === "mount" ||
             selectedSlot === "pet" ||
             selectedSlot === "relic_sublimation" ||
@@ -416,7 +420,7 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems }) {
       )
       .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
       .slice(0, 50);
-  }, [search, allItems, level, selectedSlot]);
+  }, [search, allItems, level, selectedSlot, recycleItemIds]);
 
   function handleEqChange(key, value) {
     setEquipment((prev) => ({ ...prev, [key]: value }));
@@ -554,7 +558,7 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems }) {
                         onClick={() => handleSelectItem(item)}
                         className="w-full text-left p-2 text-sm hover:bg-white/10 bg-[#163544] cursor-pointer rounded transition-colors flex flex-col items-start justify-start"
                       >
-                        <div className="flex gap-2 items-start">
+                        <div className="flex gap-2 items-start w-full">
                           <div className="relative shrink-0">
                             <img
                               src={`${ITEM_ICON_BASE}${item.gfxId}.png`}
@@ -564,9 +568,22 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems }) {
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <span className="text-gray-200 truncate font-medium block">
-                              {item.name}
-                            </span>
+                            <div className="flex items-start gap-1">
+                              <span className="text-gray-200 truncate font-medium block flex-1">
+                                {item.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAddRecycleItem(item.id);
+                                }}
+                                className="text-red-400 hover:text-red-300 shrink-0 leading-none cursor-pointer"
+                                title="Enviar a reciclaje"
+                              >
+                                <TrashIcon />
+                              </button>
+                            </div>
                             <div className="flex items-center gap-1 mt-0.5">
                               <img
                                 src={`${RARITY_ICON_BASE}${item.rarity}.png`}
@@ -687,22 +704,13 @@ export default function BuildsTab({
 
   const recycleItems = useMemo(() => {
     if (!allItems.current.length || !recycleItemIds.size) return [];
-    return allItems.current
+    const items = allItems.current
       .filter((item) => recycleItemIds.has(item.id))
       .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
-  }, [recycleItemIds]);
-
-  const recycleSearchResults = useMemo(() => {
-    if (!recycleSearch || !allItems.current.length) return [];
+    if (!recycleSearch) return items;
     const q = recycleSearch.toLowerCase();
-    return allItems.current
-      .filter(
-        (item) =>
-          item.name.toLowerCase().includes(q) && !recycleItemIds.has(item.id),
-      )
-      .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
-      .slice(0, 20);
-  }, [recycleSearch, recycleItemIds]);
+    return items.filter((item) => item.name.toLowerCase().includes(q));
+  }, [recycleItemIds, recycleSearch]);
 
   /** Mapa: character id → builds */
   const charBuildMap = {};
@@ -852,50 +860,18 @@ export default function BuildsTab({
               );
             })}
             {recycleItems.length === 0 && (
-              <p className="text-xs text-gray-600 italic">Sin ítems</p>
+              <p className="text-xs text-gray-600 italic">
+                {recycleSearch ? "Sin resultados" : "Sin ítems"}
+              </p>
             )}
           </div>
           <input
             type="text"
             value={recycleSearch}
             onChange={(e) => setRecycleSearch(e.target.value)}
-            placeholder={itemsLoaded ? "Añadir a reciclaje..." : "Cargando..."}
+            placeholder="Buscar item"
             className="w-full bg-[#0d2733] border border-gray-600 rounded text-xs py-1 px-2"
           />
-          {recycleSearch && recycleSearchResults.length > 0 && (
-            <div className="max-h-40 overflow-y-auto vertical-scroll border border-gray-700/60 rounded space-y-0.5 p-1">
-              {recycleSearchResults.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onAddRecycleItem(item.id);
-                    setRecycleSearch("");
-                  }}
-                  className="w-full text-left p-1.5 text-sm hover:bg-white/5 cursor-pointer rounded flex items-start gap-2"
-                >
-                  <div className="relative shrink-0">
-                    <img
-                      src={`${ITEM_ICON_BASE}${item.gfxId}.png`}
-                      alt=""
-                      className="size-8"
-                      loading="lazy"
-                    />
-                    <img
-                      src={`${RARITY_ICON_BASE}${item.rarity}.png`}
-                      alt=""
-                      className="absolute -top-0.5 -left-0.5 h-3 w-auto"
-                    />
-                  </div>
-                  <span className="text-gray-300 truncate flex-1">
-                    {item.name}
-                  </span>
-                  <span className="text-gray-500 shrink-0 text-xs">
-                    Nv.{item.level}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -905,6 +881,8 @@ export default function BuildsTab({
           onAddBuild={onAddBuild}
           onClose={() => setCreatingForChar(null)}
           allItems={allItems.current}
+          recycleItemIds={recycleItemIds}
+          onAddRecycleItem={onAddRecycleItem}
         />
       )}
     </>
