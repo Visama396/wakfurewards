@@ -624,13 +624,12 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
               return (
                 <button
                   key={slot.key}
-                  onClick={() => {
+                    onClick={() => {
                     setSelectedSlot(slot.key);
                     const item = allItems.find(
                       (i) => i.id === equipment[slot.key],
                     );
                     setSearch(item?.name || "");
-                    setLevel(200);
                     setErrorSlots(new Set());
                   }}
                   title={slot.label}
