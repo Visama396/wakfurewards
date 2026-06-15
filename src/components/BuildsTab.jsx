@@ -292,7 +292,7 @@ function FormSocketRow({ equipment, socketIndex, socket, onChange }) {
 const ICON_BASE =
   "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/equipmentDefaults/";
 const ITEM_ICON_BASE =
-  "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/items/";
+  "https://raw.githubusercontent.com/Vertylo/wakassets/main/items/";
 const RARITY_ICON_BASE =
   "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/rarities/";
 const STAT_ICON_BASE =
