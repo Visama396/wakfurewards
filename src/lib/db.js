@@ -115,3 +115,44 @@ export async function addBuild(characterId, level, equipment, socketsData) {
 
   return build;
 }
+
+export async function updateBuild(buildId, level, equipment, socketsData) {
+  const cleanEq = {};
+  for (const [key, val] of Object.entries(equipment)) {
+    if (val) cleanEq[key] = typeof val === "string" ? val.trim() : val;
+  }
+
+  const { error } = await supabase
+    .from("wakfubuilds")
+    .update({ level: parseInt(level), ...cleanEq })
+    .eq("id", buildId);
+
+  if (error) throw error;
+
+  const { error: delErr } = await supabase
+    .from("wakfubuild_sockets")
+    .delete()
+    .eq("build_id", buildId);
+
+  if (delErr) throw delErr;
+
+  const socketInserts = [];
+  for (const [eq, slots] of Object.entries(socketsData)) {
+    for (const slot of slots) {
+      if (slot.level > 0) {
+        socketInserts.push({
+          build_id: buildId,
+          equipment: eq,
+          slot_index: slot.slot_index,
+          level: slot.level,
+          color: slot.color,
+        });
+      }
+    }
+  }
+
+  if (socketInserts.length > 0) {
+    const { error: sockErr } = await supabase.from("wakfubuild_sockets").insert(socketInserts);
+    if (sockErr) throw sockErr;
+  }
+}

@@ -154,7 +154,7 @@ function ItemTooltip({ item }) {
 }
 
 /** Individual build card display */
-function BuildCard({ build, itemLookup }) {
+function BuildCard({ build, itemLookup, onEdit }) {
   const socketsByEq = groupSocketsByEquipment(build.wakfubuild_sockets);
 
   const ROW_1 = ["head", "neck", "chest", "back", "shoulders", "belt", "legs"];
@@ -222,23 +222,26 @@ function BuildCard({ build, itemLookup }) {
 
   function Row({ leftSlots, rightSlots }) {
     return (
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          {leftSlots.map((k) => (
-            <SlotIcon key={k} slotKey={k} />
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {rightSlots.map((k) => (
-            <SlotIcon key={k} slotKey={k} />
-          ))}
-        </div>
+      <div className="flex items-center gap-1.5">
+        {leftSlots.map((k) => (
+          <SlotIcon key={k} slotKey={k} />
+        ))}
+        {rightSlots.length > 0 && (
+          <div className="flex items-center gap-1.5 ml-3">
+            {rightSlots.map((k) => (
+              <SlotIcon key={k} slotKey={k} />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0d2733]/80 rounded p-2 border border-gray-700/40 space-y-1.5">
+    <button
+      onClick={() => onEdit?.(build)}
+      className="bg-[#0d2733]/80 rounded p-2 border border-gray-700/40 space-y-1.5 text-left cursor-pointer hover:bg-[#0d2733] transition-colors"
+    >
       <div className="flex items-center gap-2">
         <span className="bg-orange-400/20 text-orange-300 text-xs font-bold px-1.5 py-0.5 rounded">
           Nv.{build.level}
@@ -251,7 +254,7 @@ function BuildCard({ build, itemLookup }) {
         <Row leftSlots={ROW_1} rightSlots={ROW_1_END} />
         <Row leftSlots={ROW_2} rightSlots={ROW_2_END} />
       </TooltipProvider>
-    </div>
+    </button>
   );
 }
 
@@ -387,15 +390,33 @@ function createDefaultSockets() {
   }));
 }
 
-/** Form drawer for creating a new build */
-function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItemIds, onAddRecycleItem }) {
-  const [level, setLevel] = useState(200);
+/** Form drawer for creating/editing a build */
+function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose, allItems, recycleItemIds, onAddRecycleItem }) {
+  const [level, setLevel] = useState(build?.level ?? 200);
   const [equipment, setEquipment] = useState({});
   const [equipmentGfx, setEquipmentGfx] = useState({});
   const [sockets, setSockets] = useState({});
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [search, setSearch] = useState("");
   const [errorSlots, setErrorSlots] = useState(new Set());
+
+  useEffect(() => {
+    if (!build) return;
+    setLevel(build.level);
+    const eq = {};
+    const gfx = {};
+    for (const slot of EQUIPMENT_SLOTS) {
+      const itemId = build[slot.key];
+      if (!itemId) continue;
+      eq[slot.key] = itemId;
+      const item = allItems.find((i) => i.id === itemId);
+      if (item) gfx[slot.key] = item.gfxId;
+    }
+    setEquipment(eq);
+    setEquipmentGfx(gfx);
+    const sock = groupSocketsByEquipment(build.wakfubuild_sockets);
+    setSockets(sock);
+  }, [build]);
 
   const levelMin = useMemo(() => {
     const idx = LEVEL_OPTIONS.indexOf(level);
@@ -502,7 +523,11 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
       return;
     }
 
-    onAddBuild(character.id, level, equipment, sockets);
+    if (build) {
+      onUpdateBuild(build.id, character.id, level, equipment, sockets);
+    } else {
+      onAddBuild(character.id, level, equipment, sockets);
+    }
     onClose();
   }
 
@@ -591,10 +616,10 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
       <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col h-[65dvh] mt-0">
         <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
           <DrawerTitle className="sr-only">
-            Crear build para {character.char}
+            {build ? "Editar build" : "Crear build"} para {character.char}
           </DrawerTitle>
           <h3 className="text-lg font-semibold text-orange-300">
-            Crear build para {character.char}
+            {build ? "Editar build" : "Crear build"} para {character.char}
           </h3>
           <DrawerClose className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none">
             ×
@@ -804,7 +829,7 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
               onClick={handleSubmit}
               className="px-6 py-2 text-sm bg-orange-400 hover:bg-orange-300 rounded font-medium text-black cursor-pointer"
             >
-              Guardar build
+              {build ? "Actualizar build" : "Guardar build"}
             </button>
           </div>
         </div>
@@ -822,6 +847,7 @@ export default function BuildsTab() {
   const [characters, setCharacters] = useState([]);
   const [recycleItemIds, setRecycleItemIds] = useState(new Set());
   const [creatingForChar, setCreatingForChar] = useState(null);
+  const [editingBuild, setEditingBuild] = useState(null);
   const [recycleSearch, setRecycleSearch] = useState("");
   const [characterFilter, setCharacterFilter] = useState("");
   const scrollRef = useRef(null);
@@ -855,6 +881,18 @@ export default function BuildsTab() {
       toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
     } catch (e) {
       toast.error("Error al crear build: " + e.message);
+    }
+  }
+
+  async function updateBuild(buildId, characterId, level, equipment, socketsData) {
+    try {
+      await db.updateBuild(buildId, level, equipment, socketsData);
+      const newBuilds = await db.fetchBuilds();
+      setBuilds(newBuilds);
+      const char = characters.find((c) => c.id === parseInt(characterId));
+      toast.success(`Build nivel ${level} actualizada para ${char?.char || "personaje"}`);
+    } catch (e) {
+      toast.error("Error al actualizar build: " + e.message);
     }
   }
 
@@ -944,7 +982,7 @@ export default function BuildsTab() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
         <div className="flex flex-col flex-1 min-h-0 min-w-0">
           <input
             type="text"
@@ -982,13 +1020,17 @@ export default function BuildsTab() {
                     + Build
                   </button>
                 </div>
-                <div className="space-y-2 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1">
+                <div className="flex flex-col gap-2 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1">
                   {charBuilds ? (
                     charBuilds.map((build) => (
                       <BuildCard
                         key={build.id}
                         build={build}
                         itemLookup={itemLookup}
+                        onEdit={(b) => {
+                          setEditingBuild(b);
+                          setCreatingForChar(char);
+                        }}
                       />
                     ))
                   ) : (
@@ -1090,8 +1132,13 @@ export default function BuildsTab() {
       {creatingForChar && (
         <BuildFormDrawer
           character={creatingForChar}
+          build={editingBuild}
           onAddBuild={addBuild}
-          onClose={() => setCreatingForChar(null)}
+          onUpdateBuild={updateBuild}
+          onClose={() => {
+            setCreatingForChar(null);
+            setEditingBuild(null);
+          }}
           allItems={allItems.current}
           recycleItemIds={recycleItemIds}
           onAddRecycleItem={addRecycleItem}
