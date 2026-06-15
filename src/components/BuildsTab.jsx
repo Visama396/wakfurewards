@@ -923,11 +923,11 @@ export default function BuildsTab() {
       {creatingForChar && (
         <BuildFormDrawer
           character={creatingForChar}
-          onAddBuild={onAddBuild}
+          onAddBuild={addBuild}
           onClose={() => setCreatingForChar(null)}
           allItems={allItems.current}
           recycleItemIds={recycleItemIds}
-          onAddRecycleItem={onAddRecycleItem}
+          onAddRecycleItem={addRecycleItem}
         />
       )}
     </>
