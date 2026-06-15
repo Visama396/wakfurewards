@@ -1,9 +1,14 @@
 import { useRef, useEffect, useState, Fragment } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/utils/supabase";
+import * as db from "@/lib/db";
 import DungeonCard from "@/components/DungeonCard";
 import CharacterCard from "@/components/CharacterCard";
 import FilterBar from "@/components/FilterBar";
 import PadresAusentes from "@/components/PadresAusentes";
 import RoleSelector from "@/components/RoleSelector";
+import TeamRecommendationModal from "@/components/TeamRecommendationModal";
+import { recommendTeam } from "@/lib/teamRecommender";
 import {
   Combobox,
   ComboboxInput,
@@ -15,39 +20,25 @@ import {
 import { STASIS_OPTIONS } from "@/lib/constants";
 import { useIsFinePointer } from "@/lib/utils";
 
-/**
- * Pestaña principal de recompensas.
- * Layout de dos columnas: personajes (izquierda) y mazmorras (derecha).
- * Soporta drag-and-drop de personajes a mazmorras para añadir recompensas rápido.
- * Incluye filtros por jugador, rol, búsqueda por nombre, y picker de mazmorra al soltar.
- */
 export default function RecompensasTab({
-  searchFilteredInactives,
-  inactivePlayers,
-  playerFilter,
-  setPlayerFilter,
-  roleFilter,
-  setRoleFilter,
-  availableRoles,
-  searchCharacters,
-  setSearchCharacters,
-  dungeons,
-  dungRewardMap,
-  charMap,
-  rewardMap,
-  dungeonFilter,
-  setDungeonFilter,
-  addDungeonReward,
-  deleteReward,
-  updateStasis,
-  addDungeonTeamReward,
-  handleOpenBuilder,
-  highlightedDungeonNames,
-  moduloxDungeonNames,
-  sortedChars,
-  totalStasis,
-  togglePadreAusente,
+  highlightedDungeonNames = new Set(),
+  moduloxDungeonNames = new Set(),
 }) {
+  const [characters, setCharacters] = useState([]);
+  const [dungeons, setDungeons] = useState([]);
+  const [rewards, setRewards] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [playerFilter, setPlayerFilter] = useState(null);
+  const [dungeonFilter, setDungeonFilter] = useState("");
+  const [searchCharacters, setSearchCharacters] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+
+  const [builderDungeonId, setBuilderDungeonId] = useState(null);
+  const [builderPresetChar, setBuilderPresetChar] = useState(null);
+  const [builderResult, setBuilderResult] = useState(null);
+  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(new Set());
+
   const scrollRef = useRef(null);
   const canDrag = useIsFinePointer();
   const [listDragOver, setListDragOver] = useState(false);
@@ -57,11 +48,189 @@ export default function RecompensasTab({
   const [pickerDungeon, setPickerDungeon] = useState(null);
   const [pickerStasis, setPickerStasis] = useState(1);
 
-  /**
-   * Convierte el scroll vertical del ratón en scroll horizontal
-   * para la fila de tarjetas de mazmorra (UX más natural).
-   * Respeta elementos con clase .vertical-scroll para no interferir.
-   */
+  useEffect(() => {
+    loadData();
+    const channel = supabase
+      .channel("wakfurewards-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wakfurewards" },
+        () => loadData(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  async function loadData() {
+    const [chars, dungs, rwds] = await Promise.all([
+      db.fetchCharacters(),
+      db.fetchDungeons(),
+      db.fetchRewards(),
+    ]);
+    setCharacters(chars);
+    setDungeons(dungs);
+    setRewards(rwds);
+    setLoading(false);
+  }
+
+  const rewardMap = {};
+  rewards.forEach((r) => {
+    if (!rewardMap[r.char]) rewardMap[r.char] = [];
+    rewardMap[r.char].push(r);
+  });
+
+  const charMap = {};
+  characters.forEach((c) => { charMap[c.id] = c; });
+
+  const dungRewardMap = {};
+  rewards.forEach((r) => {
+    if (!dungRewardMap[r.dung]) dungRewardMap[r.dung] = [];
+    dungRewardMap[r.dung].push(r);
+  });
+
+  const sortedChars = [...characters].sort((a, b) => {
+    if (a.player !== b.player) return a.player.localeCompare(b.player);
+    return a.char.localeCompare(b.char);
+  });
+
+  const inactivePlayers = [
+    ...new Set(
+      sortedChars
+        .filter((c) => c.charrole !== "Padre Ausente")
+        .map((c) => c.player),
+    ),
+  ].sort((a, b) => {
+    const ordenManual = ["Peballo", "Juanio", "Visama"];
+    const indexA = ordenManual.indexOf(a);
+    const indexB = ordenManual.indexOf(b);
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  const availableRoles = [
+    ...new Set(
+      sortedChars
+        .filter((c) => c.charrole !== "Padre Ausente")
+        .map((c) => c.charrole),
+    ),
+  ].filter(Boolean).sort();
+
+  const searchFilteredInactives = (
+    playerFilter
+      ? sortedChars.filter((c) => c.player === playerFilter)
+      : sortedChars
+  ).filter((c) => {
+    const matchesRole = roleFilter ? c.charrole === roleFilter : true;
+    const matchesName = c.char
+      .toLowerCase()
+      .includes(searchCharacters.toLowerCase());
+    return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
+  });
+
+  const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
+
+  function getAvailableChars(dungeonId) {
+    const completedCharIds = new Set(
+      (dungRewardMap[dungeonId] || []).map((r) => r.char),
+    );
+    return sortedChars.filter(
+      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
+    );
+  }
+
+  function handleOpenBuilder(dungeonId, presetChar) {
+    setBuilderDungeonId(dungeonId);
+    setBuilderPresetChar(presetChar);
+    const chars = getAvailableChars(dungeonId);
+    const dungeon = dungeons.find((d) => d.id === dungeonId);
+    if (dungeon) {
+      const result = recommendTeam(dungeon.name, chars);
+      setBuilderResult(result);
+    }
+    setBuilderRerolearExcludedIds(new Set());
+  }
+
+  function handleBuilderRerolear(teamCharIds) {
+    const newExcluded = new Set(builderRerolearExcludedIds);
+    teamCharIds.forEach((id) => newExcluded.add(id));
+    setBuilderRerolearExcludedIds(newExcluded);
+    const dungeon = dungeons.find((d) => d.id === builderDungeonId);
+    if (!dungeon) return;
+    const chars = getAvailableChars(builderDungeonId);
+    const filtered = chars.filter((c) => !newExcluded.has(c.id));
+    const result = recommendTeam(dungeon.name, filtered);
+    setBuilderResult(result);
+  }
+
+  async function deleteReward(id) {
+    const reward = rewards.find((r) => r.id === id);
+    const char = reward ? charMap[reward.char] : null;
+    const dungName = reward
+      ? dungeons.find((d) => d.id === reward.dung)?.name
+      : null;
+    await db.deleteReward(id);
+    loadData();
+    if (char) {
+      const sufijo = char.gender === 1 ? "eliminada" : "eliminado";
+      toast.success(`${char.char} ${sufijo} de ${dungName}`);
+    }
+  }
+
+  async function addDungeonReward(dungId, charId, stasis) {
+    try {
+      await db.addDungeonReward(dungId, charId, stasis);
+      const char = charMap[charId];
+      const dung = dungeons.find((d) => d.id === parseInt(dungId));
+      const sufijo = char?.gender === 1 ? "añadida" : "añadido";
+      toast.success(`${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`);
+      loadData();
+    } catch (e) {
+      console.error("Error al insertar:", e);
+      toast.error("Error al añadir: " + e.message);
+    }
+  }
+
+  async function addDungeonTeamReward(dungId, teamMembers, stasis) {
+    if (!teamMembers || teamMembers.length === 0) {
+      toast.error("No hay personajes para añadir");
+      return;
+    }
+    try {
+      await db.addDungeonTeamReward(dungId, teamMembers, stasis);
+      const dung = dungeons.find((d) => d.id === parseInt(dungId));
+      toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
+      loadData();
+    } catch (e) {
+      toast.error("Error al añadir equipo: " + e.message);
+    }
+  }
+
+  async function updateStasis(id, val) {
+    try {
+      await db.updateStasis(id, val);
+      await loadData();
+    } catch (e) {
+      alert("Error al actualizar: " + e.message);
+    }
+  }
+
+  async function togglePadreAusente(character) {
+    const nuevoRol = character.charrole === "Padre Ausente" ? "xD" : "Padre Ausente";
+    try {
+      await db.togglePadreAusente(character.id, nuevoRol);
+      toast.success(
+        nuevoRol === "Padre Ausente"
+          ? `${character.char} enviado a Padre Ausente`
+          : `${character.char} ha regresado a la lista activa`,
+      );
+      await loadData();
+    } catch (e) {
+      toast.error("Error al cambiar el estado: " + e.message);
+    }
+  }
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -76,7 +245,6 @@ export default function RecompensasTab({
     return () => el.removeEventListener("wheel", onWheel);
   });
 
-  /** Calcula la posición de inserción basada en la coordenada X del cursor */
   function handleListDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -104,7 +272,6 @@ export default function RecompensasTab({
     setDragCharId(null);
   }
 
-  /** Al soltar un personaje, muestra el picker de mazmorra */
   function handleListDrop(e) {
     e.preventDefault();
     const charId = parseInt(e.dataTransfer.getData("text/plain"));
@@ -115,13 +282,16 @@ export default function RecompensasTab({
     setShowDungeonPicker(true);
   }
 
-  /** Confirma la recompensa desde el picker de arrastre */
   function handlePickerSubmit() {
     if (!pickerDungeon || !dragCharId) return;
     addDungeonReward(pickerDungeon.id, dragCharId, pickerStasis);
     setShowDungeonPicker(false);
     setListDragOver(false);
     setDragCharId(null);
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-400">Cargando...</div>;
   }
 
   const draggedChar = dragCharId ? charMap[dragCharId] : null;
@@ -134,7 +304,6 @@ export default function RecompensasTab({
       d.name.toLowerCase().includes(dungeonFilter.toLowerCase()),
   );
 
-  /** Placeholder visual que se muestra al arrastrar un personaje sobre la lista */
   function renderPlaceholder() {
     if (showDungeonPicker) {
       return (
@@ -169,9 +338,7 @@ export default function RecompensasTab({
               className="flex-1 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-1"
             >
               {STASIS_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
@@ -313,6 +480,30 @@ export default function RecompensasTab({
         characters={sortedChars}
         onTogglePadre={togglePadreAusente}
       />
+
+      {builderDungeonId &&
+        builderResult &&
+        (() => {
+          const dungeon = dungeons.find((d) => d.id === builderDungeonId);
+          if (!dungeon) return null;
+          const chars = getAvailableChars(builderDungeonId);
+          return (
+            <TeamRecommendationModal
+              dungeonName={dungeon.name}
+              dungeon={dungeon}
+              result={builderResult}
+              incompleteChars={chars}
+              onAddTeam={addDungeonTeamReward}
+              onRerolear={handleBuilderRerolear}
+              presetChar={builderPresetChar}
+              onClose={() => {
+                setBuilderDungeonId(null);
+                setBuilderPresetChar(null);
+                setBuilderResult(null);
+              }}
+            />
+          );
+        })()}
     </>
   );
 }

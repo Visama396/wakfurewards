@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import * as db from "@/lib/db";
 import ClassIcon from "@/components/ClassIcon";
 import { Drawer, DrawerContent, DrawerClose } from "@/components/ui/drawer";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -682,25 +684,68 @@ function BuildFormDrawer({ character, onAddBuild, onClose, allItems, recycleItem
  * Pestaña de builds.
  * Muestra personajes en tarjetas con sus builds listadas dentro.
  */
-export default function BuildsTab({
-  builds = [],
-  characters = [],
-  onAddBuild,
-  recycleItemIds = new Set(),
-  onAddRecycleItem,
-  onRemoveRecycleItem,
-}) {
+export default function BuildsTab() {
+  const [builds, setBuilds] = useState([]);
+  const [characters, setCharacters] = useState([]);
+  const [recycleItemIds, setRecycleItemIds] = useState(new Set());
   const [creatingForChar, setCreatingForChar] = useState(null);
   const [recycleSearch, setRecycleSearch] = useState("");
   const allItems = useRef([]);
   const [itemsLoaded, setItemsLoaded] = useState(false);
 
   useEffect(() => {
+    async function loadData() {
+      const [b, c, ri] = await Promise.all([
+        db.fetchBuilds(),
+        db.fetchCharacters(),
+        db.fetchRecycleIds(),
+      ]);
+      setBuilds(b);
+      setCharacters(c);
+      setRecycleItemIds(ri);
+    }
+    loadData();
     import("@/data/items.json").then((mod) => {
       allItems.current = mod.default.map(extractItemInfo);
       setItemsLoaded(true);
     });
   }, []);
+
+  async function addBuild(characterId, level, equipment, socketsData) {
+    try {
+      await db.addBuild(characterId, level, equipment, socketsData);
+      const newBuilds = await db.fetchBuilds();
+      setBuilds(newBuilds);
+      const char = characters.find((c) => c.id === parseInt(characterId));
+      toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
+    } catch (e) {
+      toast.error("Error al crear build: " + e.message);
+    }
+  }
+
+  async function addRecycleItem(itemId) {
+    try {
+      await db.addRecycleItem(itemId);
+      setRecycleItemIds((prev) => new Set(prev).add(parseInt(itemId)));
+      toast.success("Ítem añadido a reciclaje");
+    } catch (e) {
+      toast.error("Error al añadir a reciclaje: " + e.message);
+    }
+  }
+
+  async function removeRecycleItem(itemId) {
+    try {
+      await db.removeRecycleItem(itemId);
+      setRecycleItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(parseInt(itemId));
+        return next;
+      });
+      toast.success("Ítem eliminado de reciclaje");
+    } catch (e) {
+      toast.error("Error al eliminar de reciclaje: " + e.message);
+    }
+  }
 
   const recycleItems = useMemo(() => {
     if (!allItems.current.length || !recycleItemIds.size) return [];
@@ -851,7 +896,7 @@ export default function BuildsTab({
                     )}
                   </div>
                   <button
-                    onClick={() => onRemoveRecycleItem(item.id)}
+                    onClick={() => removeRecycleItem(item.id)}
                     className="text-gray-600 hover:text-red-400 shrink-0 cursor-pointer leading-none"
                   >
                     ×

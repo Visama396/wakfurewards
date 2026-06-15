@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { supabase } from "@/utils/supabase";
 import pkg from "../../package.json";
 import { Menu, X } from "lucide-react";
+import DailiesButton from "@/components/DailiesButton";
+import { Toaster } from "@/components/ui/sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import RecompensasTab from "@/components/RecompensasTab";
+import BuildsTab from "@/components/BuildsTab";
+import GuiasTab from "@/components/GuiasTab";
+import CompraTab from "@/components/CompraTab";
 
 const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
 const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
 
-/**
- * Mapea nombres de celdas de Google Sheets (valor crudo de celda D4:D25)
- * a los nombres de mazmorras con emoji que se muestran en la app.
- * Esto permite que la rotación diaria de Google Sheets se refleje en la UI.
- */
 const SPREADSHEET_TO_APP = {
   "Guarida de los Tejaroxores": "Cojonidas 🍯🦡",
   "Volcán Or'Hodruin": "Señor de la Llama 🦙🌋",
@@ -40,68 +40,10 @@ const SPREADSHEET_TO_APP = {
   Necromundo: "Muertohambres",
 };
 
-import TeamRecommendationModal from "@/components/TeamRecommendationModal";
-import { recommendTeam } from "@/lib/teamRecommender";
-import DailiesButton from "@/components/DailiesButton";
-import { Toaster } from "@/components/ui/sonner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import RecompensasTab from "@/components/RecompensasTab";
-import BuildsTab from "@/components/BuildsTab";
-import GuiasTab from "@/components/GuiasTab";
-import CompraTab from "@/components/CompraTab";
-
 export default function App() {
-  const [characters, setCharacters] = useState([]);
-  const [dungeons, setDungeons] = useState([]);
-  const [rewards, setRewards] = useState([]);
-  const [builds, setBuilds] = useState([]);
-  const [recycleItemIds, setRecycleItemIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-
-  const [playerFilter, setPlayerFilter] = useState(null);
-  const [dungeonFilter, setDungeonFilter] = useState("");
-  const [searchCharacters, setSearchCharacters] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(
-    new Set(),
-  );
+  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(new Set());
   const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
-  const [builderDungeonId, setBuilderDungeonId] = useState(null);
-  const [builderPresetChar, setBuilderPresetChar] = useState(null);
-  const [builderResult, setBuilderResult] = useState(null);
-  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(
-    new Set(),
-  );
   const [menuOpen, setMenuOpen] = useState(false);
-
-  /** Abre el modal del builder con la recomendación de equipo para una mazmorra */
-  function handleOpenBuilder(dungeonId, presetChar) {
-    setBuilderDungeonId(dungeonId);
-    setBuilderPresetChar(presetChar);
-    const chars = getAvailableChars(dungeonId);
-    const dungeon = dungeons.find((d) => d.id === dungeonId);
-    if (dungeon) {
-      const result = recommendTeam(dungeon.name, chars);
-      setBuilderResult(result);
-    }
-    setBuilderRerolearExcludedIds(new Set());
-  }
-
-  /**
-   * Vuelve a recomendar equipo excluyendo a los personajes del equipo actual.
-   * Esto permite "rerolear" para encontrar combinaciones alternativas.
-   */
-  function handleBuilderRerolear(teamCharIds) {
-    const newExcluded = new Set(builderRerolearExcludedIds);
-    teamCharIds.forEach((id) => newExcluded.add(id));
-    setBuilderRerolearExcludedIds(newExcluded);
-    const dungeon = dungeons.find((d) => d.id === builderDungeonId);
-    if (!dungeon) return;
-    const chars = getAvailableChars(builderDungeonId);
-    const filtered = chars.filter((c) => !newExcluded.has(c.id));
-    const result = recommendTeam(dungeon.name, filtered);
-    setBuilderResult(result);
-  }
 
   useEffect(() => {
     async function fetchTodayDailies() {
@@ -129,115 +71,9 @@ export default function App() {
         // spreadsheet fetch failed silently
       }
     }
-    loadData();
     fetchTodayDailies();
-
-    const channel = supabase
-      .channel("wakfurewards-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "wakfurewards" },
-        () => loadData(),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
-  /** Carga todos los datos de Supabase: personajes, mazmorras, recompensas y builds */
-  async function loadData() {
-    const [c, d, r, b, ri] = await Promise.all([
-      supabase.from("wakfuchars").select("*").order("id"),
-      supabase.from("wakfudungs").select("*").order("id"),
-      supabase.from("wakfurewards").select("*"),
-      supabase.from("wakfubuilds").select(`*, wakfubuild_sockets (*)`),
-      supabase.from("recycleitems").select("item_id"),
-    ]);
-    if (c.data) setCharacters(c.data);
-    if (d.data) setDungeons(d.data);
-    if (r.data) setRewards(r.data);
-    if (b.data) setBuilds(b.data);
-    if (ri.data) setRecycleItemIds(new Set(ri.data.map((row) => row.item_id)));
-    setLoading(false);
-  }
-
-  /** Elimina una recompensa de Supabase y recarga */
-  async function deleteReward(id) {
-    const reward = rewards.find((r) => r.id === id);
-    const char = reward ? charMap[reward.char] : null;
-    const dungName = reward
-      ? dungeons.find((d) => d.id === reward.dung)?.name
-      : null;
-    await supabase.from("wakfurewards").delete().eq("id", id);
-    loadData();
-    if (char) {
-      const sufijo = char.gender === 1 ? "eliminada" : "eliminado";
-      toast.success(`${char.char} ${sufijo} de ${dungName}`);
-    }
-  }
-
-  /** Reinicia todas las recompensas del mes (pide confirmación) */
-  async function resetRewards() {
-    if (
-      !window.confirm(
-        "¿Seguro que quieres reiniciar todas las recompensas del mes?",
-      )
-    )
-      return;
-    setRewards([]);
-    await supabase.from("wakfurewards").delete().gt("id", 0);
-  }
-
-  /** Actualiza el valor de estasis de una recompensa */
-  async function updateStasis(id, val) {
-    const { error } = await supabase
-      .from("wakfurewards")
-      .update({ stasis: val })
-      .eq("id", id);
-    if (error) {
-      alert("Error al actualizar: " + error.message);
-      return;
-    }
-    await loadData();
-  }
-
-  /** Alterna el rol de un personaje entre "Padre Ausente" y "xD" */
-  async function togglePadreAusente(character) {
-    const nuevoRol =
-      character.charrole === "Padre Ausente" ? "xD" : "Padre Ausente";
-
-    const { error } = await supabase
-      .from("wakfuchars")
-      .update({ charrole: nuevoRol })
-      .eq("id", character.id);
-
-    if (error) {
-      toast.error("Error al cambiar el estado: " + error.message);
-      return;
-    }
-
-    toast.success(
-      nuevoRol === "Padre Ausente"
-        ? `${character.char} enviado a Padre Ausente`
-        : `${character.char} ha regresado a la lista activa`,
-    );
-
-    await loadData();
-  }
-
-  /** Filtra personajes no inactivos que aún no han completado esta mazmorra */
-  function getAvailableChars(dungeonId) {
-    const completedCharIds = new Set(
-      (dungRewardMap[dungeonId] || []).map((r) => r.char),
-    );
-    return sortedChars.filter(
-      (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
-    );
-  }
-
-  /** Calcula los días/hasta el reinicio mensual (día 1 del mes siguiente) */
   function countdown() {
     const now = new Date();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -246,188 +82,6 @@ export default function App() {
     if (days > 0) return `Quedan ${days} días`;
     const hours = Math.floor(diff / (1000 * 60 * 60));
     return `Quedan ${hours} horas`;
-  }
-
-  /** Mapa: charId → recompensas (para lookup rápido) */
-  const rewardMap = {};
-  rewards.forEach((r) => {
-    if (!rewardMap[r.char]) rewardMap[r.char] = [];
-    rewardMap[r.char].push(r);
-  });
-
-  /** Mapa: charId → datos del personaje (para lookup rápido, evitando .find()) */
-  const charMap = {};
-  characters.forEach((c) => {
-    charMap[c.id] = c;
-  });
-
-  /** Mapa: dungId → recompensas (para lookup rápido) */
-  const dungRewardMap = {};
-  rewards.forEach((r) => {
-    if (!dungRewardMap[r.dung]) dungRewardMap[r.dung] = [];
-    dungRewardMap[r.dung].push(r);
-  });
-
-  /** Personajes ordenados por jugador y nombre */
-  const sortedChars = [...characters].sort((a, b) => {
-    if (a.player !== b.player) return a.player.localeCompare(b.player);
-    return a.char.localeCompare(b.char);
-  });
-
-  /** Lista de jugadores activos (sin Padre Ausente) con orden manual: Peballo > Juanio > Visama */
-  const inactivePlayers = [
-    ...new Set(
-      sortedChars
-        .filter((c) => c.charrole !== "Padre Ausente")
-        .map((c) => c.player),
-    ),
-  ].sort((a, b) => {
-    const ordenManual = ["Peballo", "Juanio", "Visama"];
-    const indexA = ordenManual.indexOf(a);
-    const indexB = ordenManual.indexOf(b);
-
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-    if (indexA !== -1) return -1;
-    if (indexB !== -1) return 1;
-    return a.localeCompare(b);
-  });
-
-  const availableRoles = [
-    ...new Set(
-      sortedChars
-        .filter((c) => c.charrole !== "Padre Ausente")
-        .map((c) => c.charrole),
-    ),
-  ]
-    .filter(Boolean)
-    .sort();
-
-  const searchFilteredInactives = (
-    playerFilter
-      ? sortedChars.filter((c) => c.player === playerFilter)
-      : sortedChars
-  ).filter((c) => {
-    const matchesRole = roleFilter ? c.charrole === roleFilter : true;
-    const matchesName = c.char
-      .toLowerCase()
-      .includes(searchCharacters.toLowerCase());
-    return c.charrole !== "Padre Ausente" && matchesRole && matchesName;
-  });
-
-  const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
-
-  /** Añade una recompensa individual a una mazmorra */
-  async function addDungeonReward(dungId, charId, stasis) {
-    const payload = {
-      char: parseInt(charId),
-      dung: parseInt(dungId),
-      stasis: parseInt(stasis),
-    };
-    const { error } = await supabase.from("wakfurewards").insert(payload);
-    if (error) {
-      console.error("Error al insertar:", error);
-      toast.error("Error al añadir: " + error.message);
-      return;
-    }
-    const char = charMap[charId];
-    const dung = dungeons.find((d) => d.id === parseInt(dungId));
-    const sufijo = char?.gender === 1 ? "añadida" : "añadido";
-    toast.success(
-      `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
-    );
-    loadData();
-  }
-
-  /** Añade recompensas para un equipo completo a una mazmorra (insert múltiple) */
-  async function addDungeonTeamReward(dungId, teamMembers, stasis) {
-    if (!teamMembers || teamMembers.length === 0) {
-      toast.error("No hay personajes para añadir");
-      return;
-    }
-    const inserts = teamMembers.map((char) => ({
-      char: parseInt(char.id),
-      dung: parseInt(dungId),
-      stasis: parseInt(stasis),
-    }));
-
-    const { error } = await supabase.from("wakfurewards").insert(inserts);
-    if (error) {
-      toast.error("Error al añadir equipo: " + error.message);
-      return;
-    }
-    const dung = dungeons.find((d) => d.id === parseInt(dungId));
-    toast.success(`Equipo añadido a ${dung?.name || "mazmorra"}`);
-    loadData();
-  }
-
-  /** Crea un build con equipamiento y sockets */
-  async function addBuild(characterId, level, equipment, socketsData) {
-    const cleanEq = {};
-    for (const [key, val] of Object.entries(equipment)) {
-      if (val) cleanEq[key] = typeof val === "string" ? val.trim() : val;
-    }
-
-    const { data: build, error } = await supabase
-      .from("wakfubuilds")
-      .insert({ character: parseInt(characterId), level: parseInt(level), ...cleanEq })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error("Error al crear build: " + error.message);
-      return;
-    }
-
-    const socketInserts = [];
-    for (const [eq, slots] of Object.entries(socketsData)) {
-      for (const slot of slots) {
-        if (slot.level > 0) {
-          socketInserts.push({
-            build_id: build.id,
-            equipment: eq,
-            slot_index: slot.slot_index,
-            level: slot.level,
-            color: slot.color,
-          });
-        }
-      }
-    }
-
-    if (socketInserts.length > 0) {
-      const { error: sockErr } = await supabase
-        .from("wakfubuild_sockets")
-        .insert(socketInserts);
-      if (sockErr) {
-        toast.error("Build creada pero error en sockets: " + sockErr.message);
-        return;
-      }
-    }
-
-    loadData();
-    const char = charMap[characterId];
-    toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
-  }
-
-  async function addRecycleItem(itemId) {
-    const { error } = await supabase.from("recycleitems").insert({ item_id: parseInt(itemId) });
-    if (error) { toast.error("Error al añadir a reciclaje: " + error.message); return; }
-    setRecycleItemIds((prev) => new Set(prev).add(parseInt(itemId)));
-    toast.success("Ítem añadido a reciclaje");
-  }
-
-  async function removeRecycleItem(itemId) {
-    const { error } = await supabase.from("recycleitems").delete().eq("item_id", parseInt(itemId));
-    if (error) { toast.error("Error al eliminar de reciclaje: " + error.message); return; }
-    setRecycleItemIds((prev) => {
-      const next = new Set(prev);
-      next.delete(parseInt(itemId));
-      return next;
-    });
-    toast.success("Ítem eliminado de reciclaje");
-  }
-
-  if (loading) {
-    return <div className="p-8 text-center text-gray-400">Cargando...</div>;
   }
 
   const tabContentClass = "flex flex-col flex-1 min-h-0 mt-0 gap-0";
@@ -465,12 +119,6 @@ export default function App() {
             dailyDungeons={highlightedDungeonNames}
             moduloxDungeons={moduloxDungeonNames}
           />
-          <button
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
-            onClick={resetRewards}
-          >
-            Resetear
-          </button>
         </div>
       </header>
 
@@ -498,7 +146,6 @@ export default function App() {
                 <X size={20} />
               </button>
             </div>
-
             <div className="flex flex-col gap-3 my-6">
               <TabsList
                 variant="line"
@@ -531,22 +178,12 @@ export default function App() {
                 </TabsTrigger>
               </TabsList>
             </div>
-
             <div className="flex flex-col gap-3">
               <span className="text-sm text-gray-400">{countdown()}</span>
               <DailiesButton
                 dailyDungeons={highlightedDungeonNames}
                 moduloxDungeons={moduloxDungeonNames}
               />
-              <button
-                className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded hover:cursor-pointer text-sm w-fit"
-                onClick={() => {
-                  resetRewards();
-                  setMenuOpen(false);
-                }}
-              >
-                Resetear
-              </button>
             </div>
           </nav>
         </div>
@@ -554,43 +191,13 @@ export default function App() {
 
       <TabsContent value="recompensas" className={tabContentClass}>
         <RecompensasTab
-          searchFilteredInactives={searchFilteredInactives}
-          inactivePlayers={inactivePlayers}
-          playerFilter={playerFilter}
-          setPlayerFilter={setPlayerFilter}
-          roleFilter={roleFilter}
-          setRoleFilter={setRoleFilter}
-          availableRoles={availableRoles}
-          searchCharacters={searchCharacters}
-          setSearchCharacters={setSearchCharacters}
-          dungeons={dungeons}
-          dungRewardMap={dungRewardMap}
-          charMap={charMap}
-          rewardMap={rewardMap}
-          dungeonFilter={dungeonFilter}
-          setDungeonFilter={setDungeonFilter}
-          addDungeonReward={addDungeonReward}
-          deleteReward={deleteReward}
-          updateStasis={updateStasis}
-          addDungeonTeamReward={addDungeonTeamReward}
-          handleOpenBuilder={handleOpenBuilder}
           highlightedDungeonNames={highlightedDungeonNames}
           moduloxDungeonNames={moduloxDungeonNames}
-          sortedChars={sortedChars}
-          totalStasis={totalStasis}
-          togglePadreAusente={togglePadreAusente}
         />
       </TabsContent>
 
       <TabsContent value="builds" className={tabContentClass}>
-        <BuildsTab
-          builds={builds}
-          characters={characters}
-          onAddBuild={addBuild}
-          recycleItemIds={recycleItemIds}
-          onAddRecycleItem={addRecycleItem}
-          onRemoveRecycleItem={removeRecycleItem}
-        />
+        <BuildsTab />
       </TabsContent>
 
       <TabsContent value="guias" className={tabContentClass}>
@@ -610,29 +217,6 @@ export default function App() {
         <p>v{pkg.version}</p>
       </footer>
 
-      {builderDungeonId &&
-        builderResult &&
-        (() => {
-          const dungeon = dungeons.find((d) => d.id === builderDungeonId);
-          if (!dungeon) return null;
-          const chars = getAvailableChars(builderDungeonId);
-          return (
-            <TeamRecommendationModal
-              dungeonName={dungeon.name}
-              dungeon={dungeon}
-              result={builderResult}
-              incompleteChars={chars}
-              onAddTeam={addDungeonTeamReward}
-              onRerolear={handleBuilderRerolear}
-              presetChar={builderPresetChar}
-              onClose={() => {
-                setBuilderDungeonId(null);
-                setBuilderPresetChar(null);
-                setBuilderResult(null);
-              }}
-            />
-          );
-        })()}
       <Toaster />
     </Tabs>
   );
