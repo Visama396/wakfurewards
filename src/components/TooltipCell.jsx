@@ -5,7 +5,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-// Envoltorio de tooltip que funciona con hover (desktop) y tap (móvil)
+/**
+ * Envoltorio de tooltip que funciona con hover (desktop) y tap (móvil).
+ * Usa estado manual para soportar tap: al hacer clic se togglea el tooltip.
+ */
 export default function TooltipCell({ children, content, side, align }) {
   const [open, setOpen] = React.useState(false)
 

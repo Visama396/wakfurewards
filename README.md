@@ -1,43 +1,40 @@
-# Astro Starter Kit: Minimal
+# WakfuRewards
+
+Trackeador de recompensas de mazmorras de fin de mes para un grupo estático de Wakfu.
+
+## Features
+
+- **Recompensas mensuales** — Registra qué personajes han completado qué mazmorras cada mes con su valor de stasis
+- **Rotación diaria** — Consulta la lista de mazmorras del DJ diario y Modulox desde Google Sheets
+- **Recomendador de equipo** — Genera combinaciones de equipo óptimas según perfiles de mazmorra y roles
+- **Guías de mazmorras** — Guías visuales con tooltips de hechizos interactivos
+- **Filtros** — Filtra por jugador, rol o búsqueda por nombre
+- **Padres Ausentes** — Marca personajes inactivos y muévelos fuera de las listas activas
+- **Contador regresivo** — Muestra días restantes hasta fin de mes
+
+## Stack
+
+- **Frontend:** Astro, React 19, Tailwind CSS 4, shadcn/ui, Radix UI, Base UI
+- **Backend:** Supabase (PostgreSQL)
+- **Externo:** Google Sheets API v4
+- **Hosting:** Netlify
+- **Package manager:** Bun
+
+## Desarrollo
 
 ```sh
-bun create astro@latest -- --template minimal
+bun install
+bun dev        # localhost:4321
+bun build      # build producción → dist/
+bun preview    # previsualizar build
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Entorno
 
-## 🚀 Project Structure
+Variables necesarias en `.env` o Netlify:
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
 ```
-
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `bun install`             | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+PUBLIC_VITE_SUPABASE_URL=
+PUBLIC_VITE_SUPABASE_PUBLISHABLE_KEY=
+PUBLIC_VITE_GOOGLESHEET_KEY=
+```

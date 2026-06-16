@@ -1,4 +1,4 @@
-// Ícono de más
+/** Ícono SVG de "+" */
 export default function PlusIcon({ className = "w-3.5 h-3.5" }) {
   return (
     <svg

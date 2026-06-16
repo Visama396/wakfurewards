@@ -1,73 +1,101 @@
-// Perfil por defecto para mazmorras sin configuración específica.
-// roleMinima define los requisitos mínimos de roles en el equipo.
-// teamSize: 6 = mazmorra normal, 3 = mazmorra pequeña (Torre Mineral, Necromundo).
+import { normalizeDungeonName } from "@/lib/utils";
+
+/**
+ * Perfil por defecto para mazmorras sin configuración específica.
+ * roleMinima: mínimos de roles exigidos. teamSize: 6 normal, 3 pequeña.
+ */
 const DEFAULT_PROFILE = {
-  classScores: {},
-  roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+  classScores: {
+    anu: 0, eni: 0, feca: 0, hiper: 0, ocra: 0, osa: 0,
+    panda: 0, sacro: 0, sadida: 0, selo: 0, sram: 0,
+    steamer: 0, tyma: 0, ugi: 0, xelor: 0, yop: 0,
+    zobal: 0, zurka: 0,
+  },
+  roleMinima: { apoyo: 2, mele: 1, distancia: 1 },
   explanation: "Sin recomendaciones específicas para esta mazmorra",
   teamSize: 6,
 };
 
-// Cada entrada es un perfil de mazmorra.
-// classScores: { clase: puntuación } — positiva si se recomienda, negativa si se penaliza.
-// roleMinima: { Support, CaC, DaD } — mínimos exigidos. xD puede cubrir CaC o DaD.
-// teamSize: 6 para mazmorras de equipo completo, 3 para mazmorras pequeñas.
+/**
+ * Perfiles de mazmorras con:
+ * - classScores: { clase: puntuación } — positiva si recomendada, negativa si penalizada
+ * - roleMinima: { apoyo, mele, distancia } — xD puede cubrir mele o distancia
+ * - teamSize: 6 para equipo completo, 3 para mazmorras pequeñas (Torre Mineral, Necromundo)
+ */
 export const DUNGEON_PROFILES = {
-  // Castiga armadura (Feca) y berserk (Sacro)
-  tejaroxores: {
-    classScores: { feca: -3, sacro: -3, eni: 2, sram: 2 },
-    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+  cojonidas: {
+    classScores: {
+      anu: 0, eni: 1, feca: -1, hiper: 0, ocra: 0, osa: 1,
+      panda: 1, sacro: -1, sadida: 0, selo: 1, sram: 0,
+      steamer: 1, tyma: 1, ugi: 0, xelor: -1, yop: 0,
+      zobal: 1, zurka: 1,
+    },
+    roleMinima: { apoyo: 2, mele: 1, distancia: 1 },
     explanation: "Castiga armadura (Feca) y berserk (Sacro)",
     teamSize: 6,
   },
-  // El jefe se mueve constantemente → los CaC lo pasan mal, mejor ranged/DaD
   buhatras: {
     classScores: {
-      ocra: 2,
-      anu: -2,
-      xelor: 1,
-      eni: 1,
-      feca: 1,
-      sacro: -1,
-      yop: -2,
-      zurka: 1,
-      zobal: -1,
+      anu: -2, eni: 1, feca: 1, hiper: 0, ocra: 2, osa: 0,
+      panda: 0, sacro: -1, sadida: 0, selo: 0, sram: 0,
+      steamer: 0, tyma: 0, ugi: 0, xelor: 1, yop: -2,
+      zobal: -1, zurka: 1,
     },
-    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
-    explanation: "El jefe no deja de moverse, los CaC lo tienen difícil",
+    roleMinima: { apoyo: 2, mele: 1, distancia: 1 },
+    explanation: "El jefe no deja de moverse, los mele lo tienen difícil",
     teamSize: 6,
   },
-  // El posicionamiento es clave → clases con control/movimiento destacan
   pandala: {
-    classScores: { panda: 3, feca: 2, sadida: 1 },
-    roleMinima: { Support: 2, CaC: 1, DaD: 1 },
+    classScores: {
+      anu: 0, eni: 0, feca: 2, hiper: 0, ocra: 0, osa: 0,
+      panda: 3, sacro: 0, sadida: 1, selo: 0, sram: 0,
+      steamer: 0, tyma: 0, ugi: 0, xelor: 0, yop: 0,
+      zobal: 0, zurka: 0,
+    },
+    roleMinima: { apoyo: 2, mele: 1, distancia: 1 },
     explanation: "El posicionamiento es muy importante",
     teamSize: 6,
   },
-  // Mazmorras de 3 personas: 2 Supports y 1 rol flexible (sin mínimo CaC/DaD)
   torremineral: {
-    classScores: {},
-    roleMinima: { Support: 2 },
+    classScores: {
+      anu: 0, eni: 0, feca: 0, hiper: 0, ocra: 0, osa: 0,
+      panda: 0, sacro: 0, sadida: 0, selo: 0, sram: 0,
+      steamer: 0, tyma: 0, ugi: 0, xelor: 0, yop: 0,
+      zobal: 0, zurka: 0,
+    },
+    roleMinima: { apoyo: 2 },
     explanation: "Mazmorra para 3 personas: 2 Supports y 1 flexible",
     teamSize: 3,
   },
   necromundo: {
-    classScores: {},
-    roleMinima: { Support: 2 },
+    classScores: {
+      anu: 0, eni: 0, feca: 0, hiper: 0, ocra: 0, osa: 0,
+      panda: 0, sacro: 0, sadida: 0, selo: 0, sram: 0,
+      steamer: 0, tyma: 0, ugi: 0, xelor: 0, yop: 0,
+      zobal: 0, zurka: 0,
+    },
+    roleMinima: { apoyo: 2 },
     explanation: "Mazmorra para 3 personas: 2 Supports y 1 flexible",
     teamSize: 3,
   },
+  senordelallama: {
+    classScores: {
+      anu: 0, eni: 0, feca: 0, hiper: 0, ocra: 0, osa: 0,
+      panda: 0, sacro: 0, sadida: 0, selo: 0, sram: 0,
+      steamer: 0, tyma: 0, ugi: 0, xelor: 0, yop: 0,
+      zobal: 0, zurka: 0,
+    },
+    roleMinima: { apoyo: 2, mele: 1, distancia: 1 },
+    explanation: "No hay recomendaciones para esta mazmorra",
+    teamSize: 6,
+  },
 };
 
-// Normaliza el nombre de la mazmorra a minúsculas sin acentos ni signos
-// para buscar su perfil. Ej: "Pechofríos" → "pechofrios", "Or'Hodruin" → "orhodruin".
+/**
+ * Busca el perfil de una mazmorra por su nombre (con emojis, acentos, etc.).
+ * Normaliza el nombre a clave plana y devuelve el perfil o una copia del default.
+ */
 export function getProfile(dungeonName) {
-  const key = dungeonName
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]/g, "");
-
+  const key = normalizeDungeonName(dungeonName);
   return DUNGEON_PROFILES[key] || { ...DEFAULT_PROFILE };
 }

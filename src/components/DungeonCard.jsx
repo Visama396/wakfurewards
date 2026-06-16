@@ -22,9 +22,18 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { recommendTeam } from "@/lib/teamRecommender";
 import { getGuide } from "@/data/dungeonGuides";
+import { useIsFinePointer } from "@/lib/utils";
 import TeamRecommendationModal from "@/components/TeamRecommendationModal";
 import DungeonGuideModal from "@/components/DungeonGuideModal";
 
+/**
+ * Tarjeta de mazmorra con:
+ * - Cabecera: nombre, ícono, total de cofres, botón + para añadir
+ * - Botones Equipo (recomendar) y Guía
+ * - Lista de recompensas con select de estasis y botón de eliminar
+ * - Drag-and-drop para añadir personajes desde CharacterCard
+ * - Resaltado visual si es DJ diaria (amarillo) o Modulox (azul) o ambas (púrpura)
+ */
 export default function DungeonCard({
   dungeon,
   rewards,
@@ -32,6 +41,7 @@ export default function DungeonCard({
   onAdd,
   onDelete,
   onUpdateStasis,
+  onAddTeam,
   highlightedDungeonNames = new Set(),
   moduloxDungeonNames = new Set(),
 }) {
@@ -40,12 +50,17 @@ export default function DungeonCard({
   const [selectedStasis, setSelectedStasis] = useState(1);
   const [showRecommender, setShowRecommender] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState(null);
+  const [rerolearExcludedIds, setRerolearExcludedIds] = useState(new Set());
+  const [presetChar, setPresetChar] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
+  const canDrag = useIsFinePointer();
+  const [dragOver, setDragOver] = useState(false);
 
   const dungTotal = rewards.reduce((s, r) => s + r.stasis, 0);
 
   const isDaily = highlightedDungeonNames.has(dungeon.name);
   const isModulox = moduloxDungeonNames.has(dungeon.name);
+  /** Gradiente de fondo según tipo de rotación */
   const variantClass =
     isDaily && isModulox
       ? "bg-gradient-to-br from-yellow-500/15 to-sky-500/15 ring-1 ring-inset ring-purple-400/40"
@@ -60,6 +75,7 @@ export default function DungeonCard({
     (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
   );
 
+  /** Añade el personaje seleccionado al popover como recompensa */
   function handleSubmit() {
     if (!selectedChar) return;
     onAdd(dungeon.id, selectedChar.id, selectedStasis);
@@ -68,20 +84,65 @@ export default function DungeonCard({
     setSelectedStasis(1);
   }
 
-  function handleRecommend() {
+  /** Abre el modal de recomendación de equipo */
+  function handleRecommend(char) {
+    setPresetChar(char || null);
     const result = recommendTeam(dungeon.name, incompleteChars);
     setRecommendationResult(result);
+    setRerolearExcludedIds(new Set());
     setShowRecommender(true);
+  }
+
+  /** Excluye los miembros del equipo actual y busca alternativas */
+  function handleRerolear(teamCharIds) {
+    const newExcluded = new Set(rerolearExcludedIds);
+    teamCharIds.forEach((id) => newExcluded.add(id));
+    setRerolearExcludedIds(newExcluded);
+    const filtered = incompleteChars.filter((c) => !newExcluded.has(c.id));
+    const result = recommendTeam(dungeon.name, filtered);
+    setRecommendationResult(result);
   }
 
   function handleGuide() {
     setShowGuide(true);
   }
 
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setDragOver(true);
+  }
+
+  function handleDragEnter(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e) {
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setDragOver(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const charId = parseInt(e.dataTransfer.getData("text/plain"));
+    if (!charId || completedCharIds.has(charId)) return;
+    onAdd(dungeon.id, charId, 1);
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        className={`rounded-lg p-3 shrink-0 min-w-72 flex flex-col h-full ${variantClass}`}
+        onDragOver={canDrag ? handleDragOver : undefined}
+        onDragEnter={canDrag ? handleDragEnter : undefined}
+        onDragLeave={canDrag ? handleDragLeave : undefined}
+        onDrop={canDrag ? handleDrop : undefined}
+        className={`rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full ${variantClass}`}
       >
         <div className="flex items-center justify-between mb-2">
           <TooltipCell
@@ -120,15 +181,25 @@ export default function DungeonCard({
               align="end"
               className="w-64 bg-[#0d2733] border border-gray-600 text-white"
             >
-              <p className="text-sm font-medium mb-1">Añadir personaje</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium">Añadir personaje</p>
+                {selectedChar && (
+                  <button
+                    onClick={() => { handleRecommend(selectedChar); setPopoverOpen(false); }}
+                    className="text-xs bg-gray-600 hover:bg-gray-500 rounded px-2 py-1 cursor-pointer font-medium text-white whitespace-nowrap"
+                  >
+                    Al Builder
+                  </button>
+                )}
+              </div>
               <Combobox
                 items={incompleteChars}
                 value={selectedChar}
                 onValueChange={(item) => setSelectedChar(item)}
                 itemToStringLabel={(item) =>
-                  `${item.char} — ${item.class} (${item.charrole})`
+                  item ? `${item.char} — ${item.class} (${item.charrole})` : ""
                 }
-                itemToStringValue={(item) => item.id.toString()}
+                itemToStringValue={(item) => (item && item.id ? item.id.toString() : "")}
               >
                 <ComboboxInput placeholder="Buscar personaje..." />
                 <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">
@@ -168,7 +239,7 @@ export default function DungeonCard({
         </div>
         <div className="flex items-center gap-1 mb-2">
           <button
-            onClick={handleRecommend}
+            onClick={() => handleRecommend()}
             className="text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer text-black"
             title="Recomendar equipo"
           >
@@ -182,7 +253,7 @@ export default function DungeonCard({
             Guía
           </button>
         </div>
-        <div className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1.5">
+        <div className={`space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0 p-1.5 border-2 border-dashed rounded ${dragOver && canDrag ? "border-orange-400/60" : "border-transparent"}`}>
           {[...rewards]
             .sort((a, b) => {
               const diff = b.stasis - a.stasis;
@@ -194,10 +265,10 @@ export default function DungeonCard({
             .map((r) => {
               const char = charMap[r.char];
               return (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between text-sm"
-                >
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between text-sm group"
+                  >
                   <div className="flex items-center gap-1">
                     {char && (
                       <ClassIcon cls={char.class} gender={char.gender} />
@@ -211,7 +282,7 @@ export default function DungeonCard({
                     </TooltipCell>
                     {char && <RoleBadge role={char.charrole} />}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     <select
                       value={r.stasis}
                       onChange={(e) => {
@@ -220,18 +291,20 @@ export default function DungeonCard({
                       }}
                       className="w-12 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-0.5"
                     >
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      {STASIS_OPTIONS.map((n) => (
                         <option key={n} value={n}>
                           {n}
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={() => onDelete(r.id)}
-                      className="text-red-400 hover:text-red-300 text-xs cursor-pointer"
-                    >
-                      <TrashIcon />
-                    </button>
+                    <div className={`overflow-hidden grow-0 shrink min-w-0 ${canDrag ? "w-0 group-hover:w-6 transition-all duration-200 group-hover:ml-2" : "w-6 ml-2"}`}>
+                      <button
+                        onClick={() => onDelete(r.id)}
+                        className={`text-red-400 hover:text-red-300 text-xs cursor-pointer p-0.5 flex items-center justify-center ${canDrag ? "opacity-0 group-hover:opacity-100 translate-x-full group-hover:translate-x-0 transition-all duration-200" : ""}`}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -241,7 +314,12 @@ export default function DungeonCard({
       {showRecommender && (
         <TeamRecommendationModal
           dungeonName={dungeon.name}
+          dungeon={dungeon}
           result={recommendationResult}
+          incompleteChars={incompleteChars}
+          onAddTeam={onAddTeam}
+          onRerolear={handleRerolear}
+          presetChar={presetChar}
           onClose={() => setShowRecommender(false)}
         />
       )}

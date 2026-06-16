@@ -1,0 +1,8 @@
+/** Placeholder para la pestaña de compra (próximamente) */
+export default function CompraTab() {
+  return (
+    <div className="flex items-center justify-center flex-1 min-h-0 text-gray-500">
+      <p className="text-lg">Compra — Próximamente</p>
+    </div>
+  );
+}

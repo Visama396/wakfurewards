@@ -1,4 +1,4 @@
-// Mapeo de nombre de clase a número de clase
+/** Mapeo de nombre de clase a su ID numérico en el CDN de wakassets */
 const CLASS_ICONS = {
   feca: 1,
   osa: 2,
@@ -20,7 +20,12 @@ const CLASS_ICONS = {
   hiper: 19,
 };
 
-// Muestra el ícono de una clase usando el ID numérico + género
+/**
+ * Muestra el ícono de una clase desde el CDN de wakassets.
+ * El ID se compone como: NN_G — donde NN es el número de clase (2 dígitos)
+ * y G es el género (0 masculino, 1 femenino).
+ * Fallback a un cuadrado gris si la clase no está mapeada.
+ */
 export default function ClassIcon({ cls, gender }) {
   const num = CLASS_ICONS[cls];
   if (!num)

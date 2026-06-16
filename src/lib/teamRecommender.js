@@ -38,29 +38,29 @@ export function recommendTeam(dungeonName, availableChars) {
   }
 
   // Comprobación previa de que hay suficientes Supports entre todos los disponibles
-  const supports = availableChars.filter((c) => c.charrole === "Support");
-  const minSupport = profile.roleMinima.Support || 0;
+  const supports = availableChars.filter((c) => c.charrole === "apoyo");
+  const minSupport = profile.roleMinima.apoyo || 0;
 
   if (supports.length < minSupport) {
-    return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minSupport} Supports disponibles` };
+    return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minSupport} apoyo(s) disponibles` };
   }
 
   // Comprobación previa de CaC/DaD (si aplica según el perfil)
   // xD puede cubrir tanto CaC como DaD, por eso se suma a ambos totales
-  const cac = availableChars.filter((c) => c.charrole === "CaC");
-  const dad = availableChars.filter((c) => c.charrole === "DaD");
+  const cac = availableChars.filter((c) => c.charrole === "mele");
+  const dad = availableChars.filter((c) => c.charrole === "distancia");
   const xd = availableChars.filter((c) => c.charrole === "xD");
-  const minCaC = profile.roleMinima.CaC || 0;
-  const minDaD = profile.roleMinima.DaD || 0;
+  const minCaC = profile.roleMinima.mele || 0;
+  const minDaD = profile.roleMinima.distancia || 0;
 
   if (minCaC > 0 || minDaD > 0) {
     const totalCaC = cac.length + xd.length;
     const totalDaD = dad.length + xd.length;
     if (totalCaC < minCaC) {
-      return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minCaC} CaC disponible (contando xD como CaC)` };
+      return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minCaC} mele disponible (contando xD como mele)` };
     }
     if (totalDaD < minDaD) {
-      return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minDaD} DaD disponible (contando xD como DaD)` };
+      return { teams: [], explanation: profile.explanation, error: `Se necesitan al menos ${minDaD} distancia disponible (contando xD como distancia)` };
     }
   }
 
@@ -80,9 +80,9 @@ export function recommendTeam(dungeonName, availableChars) {
     count++;
     if (count > MAX_COMBOS) break;
 
-    const sup = team.filter((c) => c.charrole === "Support").length;
-    const ca = team.filter((c) => c.charrole === "CaC").length;
-    const da = team.filter((c) => c.charrole === "DaD").length;
+    const sup = team.filter((c) => c.charrole === "apoyo").length;
+    const ca = team.filter((c) => c.charrole === "mele").length;
+    const da = team.filter((c) => c.charrole === "distancia").length;
     const xd = team.filter((c) => c.charrole === "xD").length;
 
     // Cada jugador puede llevar como máximo 3 personajes al mismo equipo
@@ -93,6 +93,14 @@ export function recommendTeam(dungeonName, availableChars) {
       if (playerCounts[c.player] > 3) { playerLimitOk = false; break; }
     }
 
+    // No repetir clases en el equipo
+    const classSet = new Set();
+    let classesOk = true;
+    for (const c of team) {
+      if (classSet.has(c.class)) { classesOk = false; break; }
+      classSet.add(c.class);
+    }
+
     // Validación de roles:
     // - Support mínimo exigido por el perfil
     // - xD cuenta como CaC Y DaD a la vez (son versátiles, rinden igual en ambos)
@@ -101,8 +109,14 @@ export function recommendTeam(dungeonName, availableChars) {
       && (ca + xd) >= minCaC
       && (da + xd) >= minDaD;
 
-    if (rolesOk && playerLimitOk) {
-      const totalScore = team.reduce((s, c) => s + c.score, 0);
+    if (rolesOk && playerLimitOk && classesOk) {
+      // Bonificación por diversidad de roles: preferir equipos con al menos
+      // un CaC dedicado y un DaD dedicado (no solo xD cubriendo ambos)
+      const hasDedicatedCaC = ca > 0 ? 1 : 0;
+      const hasDedicatedDaD = da > 0 ? 1 : 0;
+      const roleDiversityBonus = hasDedicatedCaC + hasDedicatedDaD;
+
+      const totalScore = team.reduce((s, c) => s + c.score, 0) + roleDiversityBonus;
 
       // Mantiene solo el top 3 ordenado por puntuación descendente
       if (topTeams.length < 3) {

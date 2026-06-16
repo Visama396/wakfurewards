@@ -1,5 +1,6 @@
 import { ROLE_COLORS } from "@/lib/constants";
 
+/** Etiqueta de rol coloreada (mele=rojo, distancia=azul, apoyo=verde, xD=púrpura) */
 export default function RoleBadge({ role }) {
   return (
     <span

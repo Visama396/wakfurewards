@@ -1,3 +1,4 @@
+/** Filtro de roles: botones coloreados para filtrar por rol (mele/distancia/apoyo/xD) */
 export default function RoleSelector({
   availableRoles = [],
   roleFilter,
@@ -19,13 +20,13 @@ export default function RoleSelector({
         const isActive = roleFilter === role;
 
         const roleClasses = {
-          CaC: isActive
+          mele: isActive
             ? "bg-red-700 text-white border-transparent scale-105 shadow-md font-semibold"
             : "bg-red-950/40 text-red-300 border-red-800/30 hover:bg-red-900/30",
-          DaD: isActive
+          distancia: isActive
             ? "bg-blue-700 text-white border-transparent scale-105 shadow-md font-semibold"
             : "bg-blue-950/40 text-blue-300 border-blue-800/30 hover:bg-blue-900/30",
-          Support: isActive
+          apoyo: isActive
             ? "bg-green-700 text-white border-transparent scale-105 shadow-md font-semibold"
             : "bg-green-950/40 text-green-300 border-green-800/30 hover:bg-green-900/30",
           xD: isActive

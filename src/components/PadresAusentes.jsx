@@ -1,13 +1,13 @@
 import ClassIcon from "@/components/ClassIcon";
 
 export default function PadresAusentes({ characters = [], onTogglePadre }) {
-  // Filtramos los padres ausentes aquí dentro de forma aislada
+  /** Personajes inactivos filtrados localmente */
   const padres = characters.filter((c) => c.charrole === "Padre Ausente");
 
   if (padres.length === 0) return null;
 
   return (
-    <section className="bg-[#0d2733] rounded-lg p-4 opacity-60 shrink-0">
+    <section className="bg-[#0d2733] rounded-lg p-4 opacity-60 shrink-0 mt-4">
       <h2 className="text-lg font-semibold text-gray-400 mb-2">
         Padre Ausente (Haz clic para activar)
       </h2>
