@@ -2,9 +2,31 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import * as db from "@/lib/db";
 import ClassIcon from "@/components/ClassIcon";
-import { Drawer, DrawerContent, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { extractItemInfo, parseItemStats, getStatIcon } from "@/lib/itemStats";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  extractItemInfo,
+  parseItemStats,
+  getStatIcon,
+  aggregateItemStats,
+  mergeItemAndCharStats,
+} from "@/lib/itemStats";
+import {
+  BRANCHES,
+  createDefaultStats,
+  getBranchPoints,
+  computeEffectiveStats,
+} from "@/lib/buildStats";
 import TrashIcon from "@/components/TrashIcon";
 
 const SOCKET_COLORS = {
@@ -170,6 +192,32 @@ function BuildCard({ build, itemLookup, onEdit }) {
   ];
   const ROW_2_END = ["epic_sublimation"];
 
+  const buildStats = useMemo(() => {
+    const items = [];
+    for (const slot of EQUIPMENT_SLOTS) {
+      const itemId = build[slot.key];
+      if (!itemId) continue;
+      const info = itemLookup.get(itemId);
+      if (!info) continue;
+      items.push(info);
+    }
+    const itemInputs = items.map((i) => ({
+      definition: i.definition,
+      level: i.level,
+    }));
+    const merged = mergeItemAndCharStats(
+      itemInputs,
+      build.stats || {},
+      build.level,
+    );
+    return processStats(merged).sort((a, b) => statSortKey(a) - statSortKey(b));
+  }, [build, itemLookup]);
+
+  const charEffects = useMemo(
+    () => computeEffectiveStats(build.stats || {}, build.level),
+    [build.stats, build.level],
+  );
+
   function SlotIcon({ slotKey }) {
     let itemId = build[slotKey];
     let info = itemId ? itemLookup.get(itemId) : null;
@@ -188,9 +236,19 @@ function BuildCard({ build, itemLookup, onEdit }) {
         title={info.name}
       />
     ) : slotKey === "relic_sublimation" ? (
-      <span className="size-8 flex items-center justify-center text-xs font-bold bg-[#0d2733] border border-gray-600 rounded text-gray-400 cursor-default" title="Reliquia">R</span>
+      <span
+        className="size-8 flex items-center justify-center text-xs font-bold bg-[#0d2733] border border-gray-600 rounded text-gray-400 cursor-default"
+        title="Reliquia"
+      >
+        R
+      </span>
     ) : slotKey === "epic_sublimation" ? (
-      <span className="size-8 flex items-center justify-center text-xs font-bold bg-[#0d2733] border border-gray-600 rounded text-gray-400 cursor-default" title="Épica">E</span>
+      <span
+        className="size-8 flex items-center justify-center text-xs font-bold bg-[#0d2733] border border-gray-600 rounded text-gray-400 cursor-default"
+        title="Épica"
+      >
+        E
+      </span>
     ) : (
       <img
         src={`${ICON_BASE}${slotKey.toUpperCase()}.png`}
@@ -203,10 +261,11 @@ function BuildCard({ build, itemLookup, onEdit }) {
       <div className="relative">
         {info ? (
           <Tooltip>
-            <TooltipTrigger asChild>
-              {icon}
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="p-0 border-0 bg-transparent shadow-none">
+            <TooltipTrigger asChild>{icon}</TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              className="p-0 border-0 bg-transparent shadow-none"
+            >
               <ItemTooltip item={info} />
             </TooltipContent>
           </Tooltip>
@@ -254,6 +313,94 @@ function BuildCard({ build, itemLookup, onEdit }) {
         <Row leftSlots={ROW_1} rightSlots={ROW_1_END} />
         <Row leftSlots={ROW_2} rightSlots={ROW_2_END} />
       </TooltipProvider>
+      {buildStats.length > 0 && (
+        <>
+          <hr className="border-gray-700/20 my-1" />
+          <div className="space-y-0.5">
+            {buildStats.map((s, i) =>
+              s.type === "elemental_res" ? (
+                <div
+                  key={i}
+                  className="flex items-center gap-1 text-[10px] leading-tight"
+                >
+                  <img
+                    src={`${STAT_ICON_BASE}${s.singleElement ? ELEMENT_RES_ICON[s.elements[0].element] : "RES_IN_PERCENT"}.png`}
+                    alt=""
+                    className="size-3.5 shrink-0"
+                  />
+                  <span className="text-gray-400">
+                    {s.singleElement
+                      ? `${s.elements[0].value} Resistencia ${s.elements[0].element}`
+                      : `${s.elements[0].value} Resistencia`}
+                  </span>
+                  {!s.singleElement &&
+                    s.elements.map((e, j) => (
+                      <img
+                        key={j}
+                        src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[e.element]}.png`}
+                        alt=""
+                        className="size-3"
+                      />
+                    ))}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className={`flex items-center gap-1 ${s.className} text-[10px] leading-tight`}
+                >
+                  {s.icon && (
+                    <img
+                      src={`${STAT_ICON_BASE}${s.icon}.png`}
+                      alt=""
+                      className="size-3.5 shrink-0"
+                    />
+                  )}
+                  <span>{s.label}</span>
+                </div>
+              ),
+            )}
+          </div>
+        </>
+      )}
+      {(() => {
+        const nonMergeKeys = new Set([
+          "barrera",
+          "curaPercent",
+          "vidaArmadura",
+          "armorGiven",
+          "dmgPercent",
+          "healPercent",
+        ]);
+        const nonMerge = Object.entries(charEffects).filter(
+          ([k, v]) => v !== null && nonMergeKeys.has(k),
+        );
+        if (nonMerge.length === 0) return null;
+        return (
+          <>
+            <hr className="border-gray-700/20 my-1" />
+            <div className="space-y-0.5">
+              {nonMerge.map(([key, v]) => {
+                const icon = CHAR_STAT_ICON[key];
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-1 text-[10px] leading-tight text-gray-400"
+                  >
+                    {icon && (
+                      <img
+                        src={`${STAT_ICON_BASE}${icon}.png`}
+                        alt=""
+                        className="size-3.5 shrink-0"
+                      />
+                    )}
+                    <span>{v.value}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
     </button>
   );
 }
@@ -300,6 +447,40 @@ const RARITY_ICON_BASE =
   "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/rarities/";
 const STAT_ICON_BASE =
   "https://raw.githubusercontent.com/Vertylo/wakassets/main/characteristics/";
+
+const CHAR_STAT_ICON = {
+  hpPercent: "HP",
+  resistElemental: "RES_IN_PERCENT",
+  barrera: "ARMOR",
+  curaPercent: "HEAL_IN_PERCENT",
+  vidaArmadura: "ARMOR",
+  domElemental: "DMG_IN_PERCENT",
+  domMelee: "MELEE_DMG",
+  domDistancia: "RANGED_DMG",
+  pv: "HP",
+  placaje: "TACKLE",
+  esquiva: "DODGE",
+  iniciativa: "INIT",
+  placajeEsquiva: "DODGE",
+  voluntad: "WILLPOWER",
+  critPercent: "CRITICAL_BONUS",
+  anticipacionPercent: "DODGE",
+  domCritico: "CRITICAL_BONUS",
+  domEspalda: "BACKSTAB_BONUS",
+  domBerserker: "BERSERK_DMG",
+  domCuras: "HEAL_IN_PERCENT",
+  resistEspalda: "RES_BACKSTAB",
+  resistCritica: "CRITICAL_RES",
+  pa: "AP",
+  pmDmg: "MP",
+  rangeDmg: "RANGE",
+  pw2: "WP",
+  armorGiven: "ARMOR",
+  dmgPercent: "DMG_IN_PERCENT",
+  resistPercent: "RES_IN_PERCENT",
+  healPercent: "HEAL_IN_PERCENT",
+  indirectDmg: "AOE_DMG",
+};
 const LEVEL_OPTIONS = [
   20, 35, 50, 65, 80, 95, 110, 125, 140, 155, 170, 185, 200, 215, 230, 245,
 ];
@@ -351,15 +532,47 @@ function processStats(stats) {
 
   if (elems.length > 0) {
     const allSame = elems.every((e) => e.value === elems[0].value);
-    res.push({
-      type: "elemental_res",
-      elements: elems,
-      allSameValue: allSame,
-      singleElement: elems.length === 1,
-    });
+    if (allSame) {
+      res.push({
+        type: "elemental_res",
+        elements: elems,
+        allSameValue: true,
+        singleElement: elems.length === 1,
+      });
+    } else {
+      for (const e of elems) {
+        res.push({ type: "stat", ...e });
+      }
+    }
   }
 
   return res;
+}
+
+function statSortKey(s) {
+  if (s.type === "elemental_res") return 50;
+  const a = s.actionId;
+  if (a === 20) return 1;
+  if (a === 31) return 2;
+  if (a === 41) return 3;
+  if (a === 191 || a === 192) return 4;
+  if (a === 160 || a === 161) return 5;
+  if (a === 175 || a === 176) return 6;
+  if (a === 173 || a === 174) return 7;
+  if (a === 150 || a === 168) return 8;
+  if (a === 875 || a === 876) return 9;
+  if (a === 120 || a === 130 || a === 1068) return 10;
+  if (a === 1052 || a === 1059) return 11;
+  if (a === 1053 || a === 1060) return 12;
+  if (a === 149 || a === 1056) return 13;
+  if (a === 1055 || a === 1061) return 14;
+  if (a === 180 || a === 181) return 15;
+  if (a === 26) return 16;
+  if (a === 80 || a === 90 || a === 100 || a === 1069) return 17;
+  if (a === 988 || a === 1062) return 18;
+  if (a === 71 || a === 1063) return 19;
+  if ([82, 83, 84, 85, 96, 97, 98].includes(a)) return 20;
+  return 99;
 }
 
 const SLOT_TYPE_IDS = {
@@ -391,11 +604,25 @@ function createDefaultSockets() {
 }
 
 /** Form drawer for creating/editing a build */
-function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose, allItems, recycleItemIds, onAddRecycleItem }) {
+function BuildFormDrawer({
+  character,
+  build,
+  onAddBuild,
+  onUpdateBuild,
+  onClose,
+  allItems,
+  recycleItemIds,
+  onAddRecycleItem,
+  itemLookup,
+}) {
   const [level, setLevel] = useState(build?.level ?? 200);
   const [equipment, setEquipment] = useState({});
   const [equipmentGfx, setEquipmentGfx] = useState({});
   const [sockets, setSockets] = useState({});
+  const [allocStats, setAllocStats] = useState(
+    build?.stats || createDefaultStats(),
+  );
+  const [selectedBranch, setSelectedBranch] = useState("intelligence");
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [search, setSearch] = useState("");
   const [errorSlots, setErrorSlots] = useState(new Set());
@@ -416,7 +643,41 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
     setEquipmentGfx(gfx);
     const sock = groupSocketsByEquipment(build.wakfubuild_sockets);
     setSockets(sock);
+    setAllocStats(build.stats || createDefaultStats());
   }, [build]);
+
+  const branchPoints = useMemo(
+    () => getBranchPoints(parseInt(level) || 1),
+    [level],
+  );
+  const effectiveStats = useMemo(
+    () => computeEffectiveStats(allocStats, parseInt(level) || 1),
+    [allocStats, level],
+  );
+
+  useEffect(() => {
+    setAllocStats((prev) => {
+      const next = { ...prev };
+      for (const branch of BRANCHES) {
+        const total = branchPoints[branch.key] || 0;
+        const spent = branch.stats.reduce(
+          (s, st) => s + (prev[st.key] || 0),
+          0,
+        );
+        if (spent > total) {
+          let excess = spent - total;
+          for (const st of branch.stats) {
+            const v = next[st.key] || 0;
+            const take = Math.min(v, excess);
+            next[st.key] = v - take;
+            excess -= take;
+            if (excess <= 0) break;
+          }
+        }
+      }
+      return next;
+    });
+  }, [branchPoints]);
 
   const levelMin = useMemo(() => {
     const idx = LEVEL_OPTIONS.indexOf(level);
@@ -481,12 +742,17 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
       const item = allItems.find((i) => i.id === id);
       if (!item) continue;
 
-      if (item.rarity === 6) {
+      if (item.rarity === 5) {
         for (const [k2, id2] of Object.entries(equipment)) {
-          if (k2 === key || k2 === "relic_sublimation" || k2 === "epic_sublimation") continue;
+          if (
+            k2 === key ||
+            k2 === "relic_sublimation" ||
+            k2 === "epic_sublimation"
+          )
+            continue;
           if (!id2) continue;
           const other = allItems.find((i) => i.id === id2);
-          if (other?.rarity === 6) {
+          if (other?.rarity === 5) {
             errSlots.add(key);
             errSlots.add(k2);
             errMsg = "Solo se permite una reliquia por build";
@@ -496,7 +762,12 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
 
       if (item.rarity === 7) {
         for (const [k2, id2] of Object.entries(equipment)) {
-          if (k2 === key || k2 === "relic_sublimation" || k2 === "epic_sublimation") continue;
+          if (
+            k2 === key ||
+            k2 === "relic_sublimation" ||
+            k2 === "epic_sublimation"
+          )
+            continue;
           if (!id2) continue;
           const other = allItems.find((i) => i.id === id2);
           if (other?.rarity === 7) {
@@ -524,9 +795,16 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
     }
 
     if (build) {
-      onUpdateBuild(build.id, character.id, level, equipment, sockets);
+      onUpdateBuild(
+        build.id,
+        character.id,
+        level,
+        equipment,
+        sockets,
+        allocStats,
+      );
     } else {
-      onAddBuild(character.id, level, equipment, sockets);
+      onAddBuild(character.id, level, equipment, sockets, allocStats);
     }
     onClose();
   }
@@ -534,12 +812,17 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
   function handleSelectItem(item) {
     const errSlots = new Set();
 
-    if (item.rarity === 6) {
+    if (item.rarity === 5) {
       for (const [key, id] of Object.entries(equipment)) {
-        if (key === selectedSlot || key === "relic_sublimation" || key === "epic_sublimation") continue;
+        if (
+          key === selectedSlot ||
+          key === "relic_sublimation" ||
+          key === "epic_sublimation"
+        )
+          continue;
         if (!id) continue;
         const existing = allItems.find((i) => i.id === id);
-        if (existing?.rarity === 6) {
+        if (existing?.rarity === 5) {
           errSlots.add(key);
           errSlots.add(selectedSlot);
         }
@@ -548,7 +831,12 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
 
     if (item.rarity === 7) {
       for (const [key, id] of Object.entries(equipment)) {
-        if (key === selectedSlot || key === "relic_sublimation" || key === "epic_sublimation") continue;
+        if (
+          key === selectedSlot ||
+          key === "relic_sublimation" ||
+          key === "epic_sublimation"
+        )
+          continue;
         if (!id) continue;
         const existing = allItems.find((i) => i.id === id);
         if (existing?.rarity === 7) {
@@ -613,7 +901,7 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
 
   return (
     <Drawer open onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col h-[65dvh] mt-0">
+      <DrawerContent className="bg-[#0d2733] text-white border-gray-600 flex flex-col h-[80dvh] mt-0">
         <div className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
           <DrawerTitle className="sr-only">
             {build ? "Editar build" : "Crear build"} para {character.char}
@@ -649,7 +937,7 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
               return (
                 <button
                   key={slot.key}
-                    onClick={() => {
+                  onClick={() => {
                     setSelectedSlot(slot.key);
                     const item = allItems.find(
                       (i) => i.id === equipment[slot.key],
@@ -824,6 +1112,235 @@ function BuildFormDrawer({ character, build, onAddBuild, onUpdateBuild, onClose,
             </div>
           )}
 
+          <div className="flex gap-4 shrink-0">
+            <div className="flex-1 min-w-0">
+              {(() => {
+                const equippedItems = EQUIPMENT_SLOTS.filter(
+                  (s) => equipment[s.key],
+                )
+                  .map((s) => {
+                    const info = itemLookup?.get(equipment[s.key]);
+                    return info
+                      ? { definition: info.definition, level: info.level }
+                      : null;
+                  })
+                  .filter(Boolean);
+                const merged = processStats(
+                  mergeItemAndCharStats(
+                    equippedItems,
+                    allocStats,
+                    parseInt(level) || 1,
+                  ),
+                ).sort((a, b) => statSortKey(a) - statSortKey(b));
+                const charEffects = computeEffectiveStats(
+                  allocStats,
+                  parseInt(level) || 1,
+                );
+                const nonMergeKeys = new Set([
+                  "barrera",
+                  "curaPercent",
+                  "vidaArmadura",
+                  "armorGiven",
+                  "dmgPercent",
+                  "healPercent",
+                ]);
+                const nonMerge = Object.entries(charEffects).filter(
+                  ([k, v]) => v !== null && nonMergeKeys.has(k),
+                );
+                const hasAny = merged.length > 0 || nonMerge.length > 0;
+                return (
+                  <>
+                    <hr className="border-gray-700/40 my-2" />
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                      Vista previa de estadísticas
+                    </h4>
+                    <div className="max-h-[220px] overflow-y-auto vertical-scroll space-y-0.5 text-xs">
+                      {merged.map((s, i) => (
+                        <div
+                          key={`merged-${i}`}
+                          className="flex items-center gap-1 leading-tight"
+                        >
+                          {s.type === "elemental_res" ? (
+                            <>
+                              <img
+                                src={`${STAT_ICON_BASE}${s.singleElement ? ELEMENT_RES_ICON[s.elements[0].element] : "RES_IN_PERCENT"}.png`}
+                                alt=""
+                                className="size-4 shrink-0"
+                              />
+                              <span className="text-gray-400">
+                                {s.singleElement
+                                  ? `${s.elements[0].value} Resistencia ${s.elements[0].element}`
+                                  : `${s.elements[0].value} Resistencia`}
+                              </span>
+                              {!s.singleElement &&
+                                s.elements.map((e, j) => (
+                                  <img
+                                    key={j}
+                                    src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[e.element]}.png`}
+                                    alt=""
+                                    className="size-3.5"
+                                  />
+                                ))}
+                            </>
+                          ) : (
+                            <>
+                              {s.icon && (
+                                <img
+                                  src={`${STAT_ICON_BASE}${s.icon}.png`}
+                                  alt=""
+                                  className="size-4 shrink-0"
+                                />
+                              )}
+                              <span className={s.className || "text-gray-400"}>
+                                {s.label}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                      {nonMerge.map(([key, v]) => {
+                        const icon = CHAR_STAT_ICON[key];
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center gap-1 leading-tight text-gray-400"
+                          >
+                            {icon && (
+                              <img
+                                src={`${STAT_ICON_BASE}${icon}.png`}
+                                alt=""
+                                className="size-4 shrink-0"
+                              />
+                            )}
+                            <span>{v.value}</span>
+                          </div>
+                        );
+                      })}
+                      {!hasAny && (
+                        <span className="text-gray-600 italic">
+                          Sin estadísticas
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            <div>
+              <hr className="border-gray-700/40 my-2" />
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                Características de Personaje
+              </h4>
+              <div className="flex gap-1 mb-2 flex-wrap">
+                {BRANCHES.map((b) => (
+                  <button
+                    key={b.key}
+                    onClick={() => setSelectedBranch(b.key)}
+                    className={`text-[10px] px-2 py-0.5 rounded cursor-pointer font-medium transition-colors ${
+                      selectedBranch === b.key
+                        ? "bg-orange-400/20 text-orange-300 ring-1 ring-orange-400"
+                        : "bg-[#163544] text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              {(() => {
+                const curBranch = BRANCHES.find(
+                  (b) => b.key === selectedBranch,
+                );
+                const totalPts = branchPoints[curBranch?.key] || 0;
+                const spentPts = curBranch
+                  ? curBranch.stats.reduce(
+                      (s, st) => s + (allocStats[st.key] || 0),
+                      0,
+                    )
+                  : 0;
+                const remainingPts = totalPts - spentPts;
+                return (
+                  <div className="text-[10px] text-gray-500 mb-1">
+                    Puntos disponibles:{" "}
+                    <span
+                      className={`font-semibold tabular-nums ${remainingPts > 0 ? "text-orange-300" : "text-gray-600"}`}
+                    >
+                      {remainingPts}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div className="space-y-1">
+                {BRANCHES.find((b) => b.key === selectedBranch)?.stats.map(
+                  (s) => {
+                    const val = allocStats[s.key] || 0;
+                    const atCap = s.cap !== null && val >= s.cap;
+                    const curBranch = BRANCHES.find(
+                      (b) => b.key === selectedBranch,
+                    );
+                    const totalPts = branchPoints[curBranch?.key] || 0;
+                    const spentPts = curBranch
+                      ? curBranch.stats.reduce(
+                          (s, st) => s + (allocStats[st.key] || 0),
+                          0,
+                        )
+                      : 0;
+                    const noBranchPts = spentPts >= totalPts;
+                    const remainingPts = totalPts - spentPts;
+                    const effective = effectiveStats[s.key];
+                    return (
+                      <div key={s.key}>
+                        <div className="flex items-center justify-between text-xs gap-4">
+                          <span className="text-gray-300">{s.label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={(e) =>
+                                setAllocStats((prev) => ({
+                                  ...prev,
+                                  [s.key]: Math.max(
+                                    0,
+                                    (prev[s.key] || 0) - (e.shiftKey ? 10 : 1),
+                                  ),
+                                }))
+                              }
+                              disabled={val <= 0}
+                              className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
+                            >
+                              −
+                            </button>
+                            <span className="w-6 text-center text-gray-200 tabular-nums">
+                              {val}
+                            </span>
+                            <button
+                              onClick={(e) =>
+                                setAllocStats((prev) => ({
+                                  ...prev,
+                                  [s.key]: Math.min(
+                                    s.cap ?? Infinity,
+                                    (prev[s.key] || 0) +
+                                      (e.shiftKey
+                                        ? Math.min(10, remainingPts)
+                                        : 1),
+                                  ),
+                                }))
+                              }
+                              disabled={atCap || noBranchPts}
+                              className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
+                            >
+                              +
+                            </button>
+                            <span className="text-gray-600 text-[10px] w-8 text-right shrink-0">
+                              {s.cap !== null ? `/${s.cap}` : ""}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end pt-2 shrink-0">
             <button
               onClick={handleSubmit}
@@ -872,25 +1389,36 @@ export default function BuildsTab() {
     });
   }, []);
 
-  async function addBuild(characterId, level, equipment, socketsData) {
+  async function addBuild(characterId, level, equipment, socketsData, stats) {
     try {
-      await db.addBuild(characterId, level, equipment, socketsData);
+      await db.addBuild(characterId, level, equipment, socketsData, stats);
       const newBuilds = await db.fetchBuilds();
       setBuilds(newBuilds);
       const char = characters.find((c) => c.id === parseInt(characterId));
-      toast.success(`Build nivel ${level} creada para ${char?.char || "personaje"}`);
+      toast.success(
+        `Build nivel ${level} creada para ${char?.char || "personaje"}`,
+      );
     } catch (e) {
       toast.error("Error al crear build: " + e.message);
     }
   }
 
-  async function updateBuild(buildId, characterId, level, equipment, socketsData) {
+  async function updateBuild(
+    buildId,
+    characterId,
+    level,
+    equipment,
+    socketsData,
+    stats,
+  ) {
     try {
-      await db.updateBuild(buildId, level, equipment, socketsData);
+      await db.updateBuild(buildId, level, equipment, socketsData, stats);
       const newBuilds = await db.fetchBuilds();
       setBuilds(newBuilds);
       const char = characters.find((c) => c.id === parseInt(characterId));
-      toast.success(`Build nivel ${level} actualizada para ${char?.char || "personaje"}`);
+      toast.success(
+        `Build nivel ${level} actualizada para ${char?.char || "personaje"}`,
+      );
     } catch (e) {
       toast.error("Error al actualizar build: " + e.message);
     }
@@ -996,60 +1524,61 @@ export default function BuildsTab() {
             className="flex gap-4 pb-2 overflow-x-auto min-w-0 horizontal-scroll flex-1 min-h-0 items-stretch"
           >
             {filteredChars.map((char) => {
-            const charBuilds = charBuildMap[char.id];
-            return (
-              <div
-                key={char.id}
-                className="bg-[#163544] rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full"
-              >
-                <div className="flex items-center gap-2 mb-3 shrink-0">
-                  <ClassIcon cls={char.class} gender={char.gender} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm truncate">
-                      {char.char}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {char.class} · {charBuilds ? charBuilds.length : 0} build
-                      {charBuilds?.length !== 1 ? "s" : ""}
-                    </p>
+              const charBuilds = charBuildMap[char.id];
+              return (
+                <div
+                  key={char.id}
+                  className="bg-[#163544] rounded-lg p-3 shrink-0 min-w-80 flex flex-col h-full"
+                >
+                  <div className="flex items-center gap-2 mb-3 shrink-0">
+                    <ClassIcon cls={char.class} gender={char.gender} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">
+                        {char.char}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {char.class} · {charBuilds ? charBuilds.length : 0}{" "}
+                        build
+                        {charBuilds?.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCreatingForChar(char)}
+                      className="shrink-0 text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer font-medium text-black"
+                    >
+                      + Build
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setCreatingForChar(char)}
-                    className="shrink-0 text-xs bg-orange-400 hover:bg-orange-300 rounded px-2 py-1 cursor-pointer font-medium text-black"
-                  >
-                    + Build
-                  </button>
+                  <div className="flex flex-col gap-2 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1">
+                    {charBuilds ? (
+                      charBuilds.map((build) => (
+                        <BuildCard
+                          key={build.id}
+                          build={build}
+                          itemLookup={itemLookup}
+                          onEdit={(b) => {
+                            setEditingBuild(b);
+                            setCreatingForChar(char);
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm text-center py-8">
+                        No hay builds registradas
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1">
-                  {charBuilds ? (
-                    charBuilds.map((build) => (
-                      <BuildCard
-                        key={build.id}
-                        build={build}
-                        itemLookup={itemLookup}
-                        onEdit={(b) => {
-                          setEditingBuild(b);
-                          setCreatingForChar(char);
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-sm text-center py-8">
-                      No hay builds registradas
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         </div>
 
-        <div className="w-full lg:w-60 shrink-0 lg:border-l border-gray-700/40 lg:pl-4 space-y-2">
-          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <div className="w-full lg:w-60 shrink-0 lg:border-l border-gray-700/40 lg:pl-4 space-y-2 flex flex-col min-h-0 max-h-[20%] lg:max-h-none">
+          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0">
             Reciclaje
           </h4>
-          <div className="space-y-1 max-h-80 overflow-y-auto vertical-scroll">
+          <div className="space-y-1 flex-1 overflow-y-auto vertical-scroll min-h-0">
             {recycleItems.map((item) => {
               const stats = parseItemStats(item.definition, item.level);
               return (
@@ -1142,6 +1671,7 @@ export default function BuildsTab() {
           allItems={allItems.current}
           recycleItemIds={recycleItemIds}
           onAddRecycleItem={addRecycleItem}
+          itemLookup={itemLookup}
         />
       )}
     </>

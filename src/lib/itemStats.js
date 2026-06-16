@@ -117,7 +117,7 @@ const ACTION_META = {
    181: { tpl: "-[#1] Dominio Espalda", el: null },
   184: { tpl: "[#1] Control", el: null },
   191: { tpl: "[#1] PW", el: null },
-  192: { tpl: "[#1] PW", el: null },
+   192: { tpl: "-[#1] PW máx.", el: null },
   400: null,
   875: { tpl: "[#1]% Anticipación", el: null },
    876: { tpl: "-[#1]% Anticipación", el: null },
@@ -194,6 +194,184 @@ export function parseItemStats(definition, itemLevel) {
       };
     })
     .filter(Boolean);
+}
+
+/**
+ * Aggregate stats from multiple items, summing values by actionId.
+ * Items: array of { definition, level }
+ * Returns array of stat objects (same shape as parseItemStats return).
+ */
+function getCanonicalActionId(actionId) {
+  if (actionId === 174) return 173;
+  if (actionId === 176) return 175;
+  return actionId;
+}
+
+export function aggregateItemStats(items) {
+  const byGroup = {};
+
+  for (const { definition, level } of items) {
+    const effects = definition?.equipEffects;
+    if (!effects) continue;
+    for (const ee of effects) {
+      const def = ee.effect?.definition;
+      if (!def) continue;
+      const { actionId, params } = def;
+      const meta = ACTION_META[actionId];
+      if (!meta) continue;
+
+      const value = computeValue(params, level);
+      if (value === null || value === 0) continue;
+
+      const canonicalId = getCanonicalActionId(actionId);
+      const numElements =
+        (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
+          ? params[2]
+          : 0;
+      const groupKey = numElements > 0 ? `${canonicalId}_${numElements}` : String(canonicalId);
+
+      if (!byGroup[groupKey]) {
+        byGroup[groupKey] = {
+          actionId: canonicalId,
+          value: 0,
+          icon: getStatIcon(canonicalId),
+          element: meta.el ? ELEMENT_NAMES[meta.el] : null,
+          el: meta.el,
+          numElements,
+        };
+      }
+      byGroup[groupKey].value += value;
+    }
+  }
+
+  return Object.values(byGroup).map((s) => {
+    const meta = ACTION_META[s.actionId];
+    let label = renderTemplate(meta.tpl, String(s.value), s.el);
+    if (s.numElements > 0) label = `${label} a ${s.numElements} elementos`;
+    return {
+      actionId: s.actionId,
+      label,
+      value: s.value,
+      icon: s.icon,
+      className: getActionColor(label),
+      element: s.element,
+    };
+  });
+}
+
+const CHAR_TO_ACTION = {
+  resistElemental: [{ actionId: 80, rate: 10 }],
+  domElemental: [{ actionId: 120, rate: 5 }],
+  domMelee: [{ actionId: 1052, rate: 8 }],
+  domDistancia: [{ actionId: 1053, rate: 8 }],
+  pv: [{ actionId: 20, rate: 20 }],
+  placaje: [{ actionId: 173, rate: 6 }],
+  esquiva: [{ actionId: 175, rate: 6 }],
+  iniciativa: [{ actionId: 171, rate: 4 }],
+  placajeEsquiva: [{ actionId: 173, rate: 4 }, { actionId: 175, rate: 4 }],
+  voluntad: [{ actionId: 177, rate: 1 }],
+  critPercent: [{ actionId: 150, rate: 1 }],
+  anticipacionPercent: [{ actionId: 875, rate: 1 }],
+  domCritico: [{ actionId: 149, rate: 4 }],
+  domEspalda: [{ actionId: 180, rate: 6 }],
+  domBerserker: [{ actionId: 1055, rate: 8 }],
+  domCuras: [{ actionId: 26, rate: 6 }],
+  resistEspalda: [{ actionId: 71, rate: 4 }],
+  resistCritica: [{ actionId: 988, rate: 4 }],
+  pa: [{ actionId: 31, rate: 1 }],
+  pmDmg: [{ actionId: 41, rate: 1 }, { actionId: 120, rate: 20 }],
+  rangeDmg: [{ actionId: 160, rate: 1 }, { actionId: 120, rate: 40 }],
+  pw2: [{ actionId: 191, rate: 2 }],
+  resistPercent: [{ actionId: 80, rate: 50 }],
+  indirectDmg: [{ actionId: 120, rate: 40 }],
+};
+
+export function mergeItemAndCharStats(items, allocStats, level) {
+  const byGroup = {};
+
+  for (const { definition, level } of items) {
+    const effects = definition?.equipEffects;
+    if (!effects) continue;
+    for (const ee of effects) {
+      const def = ee.effect?.definition;
+      if (!def) continue;
+      const { actionId, params } = def;
+      const meta = ACTION_META[actionId];
+      if (!meta) continue;
+      const value = computeValue(params, level);
+      if (value === null || value === 0) continue;
+      const canonicalId = getCanonicalActionId(actionId);
+      const numElements =
+        (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
+          ? params[2]
+          : 0;
+      const groupKey = numElements > 0 ? `${canonicalId}_${numElements}` : String(canonicalId);
+      if (!byGroup[groupKey]) {
+        byGroup[groupKey] = {
+          actionId: canonicalId,
+          value: 0,
+          icon: getStatIcon(canonicalId),
+          element: meta.el ? ELEMENT_NAMES[meta.el] : null,
+          el: meta.el,
+          numElements,
+        };
+      }
+      byGroup[groupKey].value += value;
+    }
+  }
+
+  for (const [key, pts] of Object.entries(allocStats)) {
+    if (!pts) continue;
+    const mapping = CHAR_TO_ACTION[key];
+    if (!mapping) continue;
+    for (const { actionId, rate } of mapping) {
+      const groupKey = String(actionId);
+      if (!byGroup[groupKey]) {
+        byGroup[groupKey] = {
+          actionId,
+          value: 0,
+          icon: getStatIcon(actionId),
+          element: null,
+          el: null,
+          numElements: 0,
+        };
+      }
+      byGroup[groupKey].value += pts * rate;
+    }
+  }
+
+  const hpPctPts = allocStats.hpPercent || 0;
+  if (hpPctPts > 0 || byGroup["20"]) {
+    const baseHP = 60 + 10 * (level - 1);
+    const flatPdV = byGroup["20"]?.value || 0;
+    const total = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
+    if (!byGroup["20"]) {
+      byGroup["20"] = {
+        actionId: 20,
+        value: 0,
+        icon: getStatIcon(20),
+        element: null,
+        el: null,
+        numElements: 0,
+      };
+    }
+    byGroup["20"].value = total;
+  }
+
+  return Object.values(byGroup).map((s) => {
+    const meta = ACTION_META[s.actionId];
+    if (!meta) return null;
+    let label = renderTemplate(meta.tpl, String(s.value), s.el);
+    if (s.numElements > 0) label = `${label} a ${s.numElements} elementos`;
+    return {
+      actionId: s.actionId,
+      label,
+      value: s.value,
+      icon: s.icon,
+      className: getActionColor(label),
+      element: s.element,
+    };
+  }).filter(Boolean);
 }
 
 /**
