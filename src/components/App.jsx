@@ -89,7 +89,7 @@ export default function App() {
   return (
     <Tabs
       defaultValue="recompensas"
-      className="p-4 space-y-6 flex flex-col h-screen gap-0 overflow-hidden"
+      className="p-4 space-y-6 flex flex-col min-h-screen lg:h-screen gap-0 overflow-hidden"
     >
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center justify-between sm:hidden">
