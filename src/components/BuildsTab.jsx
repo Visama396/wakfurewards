@@ -125,6 +125,18 @@ function ItemTooltip({ item }) {
             />
             <span className="text-gray-500 text-xs">Nv.{item.level}</span>
           </div>
+          {item.stateName && (
+            <>
+              <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
+                {item.stateName}
+              </span>
+              {item.stateDescription && (
+                <div className="text-[10px] text-gray-400 mt-0.5 leading-tight max-w-48"
+                  dangerouslySetInnerHTML={{ __html: item.stateDescription }}
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
       <div className="space-y-0.5 mt-1">
@@ -233,7 +245,6 @@ function BuildCard({ build, itemLookup, onEdit }) {
         src={`${ITEM_ICON_BASE}${info.gfxId}.png`}
         alt={slotDef?.label || slotKey}
         className="size-8 object-contain"
-        title={info.name}
       />
     ) : slotKey === "relic_sublimation" ? (
       <span
@@ -254,7 +265,6 @@ function BuildCard({ build, itemLookup, onEdit }) {
         src={`${ICON_BASE}${slotKey.toUpperCase()}.png`}
         alt={slotDef?.label || slotKey}
         className="size-8 object-contain"
-        title={slotDef?.label || slotKey}
       />
     );
     return (
@@ -518,6 +528,11 @@ const ELEMENT_RES_ICON = {
   Aire: "RES_AIR_PERCENT",
 };
 
+/**
+ * Groups elemental resistance stats into a single row when all
+ * elements have the same value (e.g. "10 Resistencia" with 4 element
+ * icons). When values differ, each element is shown separately.
+ */
 function processStats(stats) {
   const res = [];
   const elems = [];
@@ -549,32 +564,53 @@ function processStats(stats) {
   return res;
 }
 
+// Canonical actionId → display sort order (lower = first)
+const SORT_ORDER = {
+  20: 1,
+  31: 2,
+  41: 3,
+  191: 4,
+  192: 4,
+  160: 5,
+  161: 5,
+  175: 6,
+  176: 6,
+  173: 7,
+  174: 7,
+  150: 8,
+  168: 8,
+  875: 9,
+  876: 9,
+  120: 10,
+  130: 10,
+  1068: 10,
+  1052: 11,
+  1059: 11,
+  1053: 12,
+  1060: 12,
+  149: 13,
+  1056: 13,
+  1055: 14,
+  1061: 14,
+  180: 15,
+  181: 15,
+  26: 16,
+  80: 17,
+  90: 17,
+  100: 17,
+  1069: 17,
+  988: 18,
+  1062: 18,
+  71: 19,
+  1063: 19,
+};
+
 function statSortKey(s) {
   if (s.type === "elemental_res") return 50;
-  const a = s.actionId;
-  if (a === 20) return 1;
-  if (a === 31) return 2;
-  if (a === 41) return 3;
-  if (a === 191 || a === 192) return 4;
-  if (a === 160 || a === 161) return 5;
-  if (a === 175 || a === 176) return 6;
-  if (a === 173 || a === 174) return 7;
-  if (a === 150 || a === 168) return 8;
-  if (a === 875 || a === 876) return 9;
-  if (a === 120 || a === 130 || a === 1068) return 10;
-  if (a === 1052 || a === 1059) return 11;
-  if (a === 1053 || a === 1060) return 12;
-  if (a === 149 || a === 1056) return 13;
-  if (a === 1055 || a === 1061) return 14;
-  if (a === 180 || a === 181) return 15;
-  if (a === 26) return 16;
-  if (a === 80 || a === 90 || a === 100 || a === 1069) return 17;
-  if (a === 988 || a === 1062) return 18;
-  if (a === 71 || a === 1063) return 19;
-  if ([82, 83, 84, 85, 96, 97, 98].includes(a)) return 20;
-  return 99;
+  return SORT_ORDER[s.actionId] ?? 99;
 }
 
+/** Maps equipment slot keys to the item typeIds that can go in them */
 const SLOT_TYPE_IDS = {
   head: [134],
   neck: [120],
@@ -684,6 +720,14 @@ function BuildFormDrawer({
     return idx > 0 ? LEVEL_OPTIONS[idx - 1] + 1 : 0;
   }, [level]);
 
+  /**
+   * Item search/filter algorithm:
+   *   1. Match slot typeId (head→134, mount→611, etc.)
+   *   2. Exclude already-equipped items (recycleItemIds)
+   *   3. Mounts/pets bypass rarity and level range filters
+   *   4. Sublimation slots (relic/epic) matched by sublimation params
+   *   5. Sort by level desc, then name asc; capped at 50 results
+   */
   const filteredItems = useMemo(() => {
     if (!search || !allItems.length || !selectedSlot) return [];
     const allowedTypes = SLOT_TYPE_IDS[selectedSlot];
@@ -705,13 +749,11 @@ function BuildFormDrawer({
           allowedTypes.includes(
             item.definition?.item?.baseParameters?.itemTypeId ?? item.typeId,
           ) &&
-          (selectedSlot === "accessory"
-            ? !item.hasState
-            : selectedSlot === "relic_sublimation"
-              ? item.sublimationParams?.isRelic === true
-              : selectedSlot === "epic_sublimation"
-                ? item.sublimationParams?.isEpic === true
-                : true),
+          (selectedSlot === "relic_sublimation"
+            ? item.sublimationParams?.isRelic === true
+            : selectedSlot === "epic_sublimation"
+              ? item.sublimationParams?.isEpic === true
+              : true),
       )
       .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
       .slice(0, 50);
@@ -1042,6 +1084,26 @@ function BuildFormDrawer({
                                 Nv.{item.level}
                               </span>
                             </div>
+                            {item.stateName && (
+                              item.stateDescription ? (
+                                <TooltipProvider delayDuration={0}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block cursor-help">
+                                        {item.stateName}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="text-xs max-w-64">
+                                      <span dangerouslySetInnerHTML={{ __html: item.stateDescription }} />
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
+                                  {item.stateName}
+                                </span>
+                              )
+                            )}
                           </div>
                         </div>
                         <div className="space-y-0.5 mt-1">

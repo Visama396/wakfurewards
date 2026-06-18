@@ -1,3 +1,14 @@
+/**
+ * Wakfu character stat branches and their per-point formulas.
+ *
+ * Each character gets branch points based on level:
+ *   - Intelligence / Force / Agility / Chance: (level + 2 - i) / 4 per branch (cyclic)
+ *   - Major: 0 before 25, then 1 + floor((level-25)/50)
+ *
+ * Points are allocated to individual stats within each branch.
+ * STAT_COMPUTE converts allocated points → effective display values.
+ */
+
 export const BRANCHES = [
   {
     key: "intelligence",
@@ -72,6 +83,16 @@ export function createDefaultStats() {
   return stats;
 }
 
+/**
+ * Calculates available branch points at a given level.
+ *
+ * Four stat branches (Int/Fce/Agi/Cha) cycle: each gets 1 point
+ * every 4 levels, staggered. Formula: floor((level + 2 - i) / 4)
+ * where i = branch index (0-3). Clamped to 0 minimum.
+ *
+ * Major branch (PA/PM/PW/range) unlocks at level 25 and gains an
+ * additional point every 50 levels: 1 + floor((level - 25) / 50).
+ */
 export function getBranchPoints(level) {
   const branches = ["intelligence", "force", "agility", "chance"];
   const points = {};
@@ -83,8 +104,14 @@ export function getBranchPoints(level) {
   return points;
 }
 
+/**
+ * Per-stat compute functions.
+ * Each receives allocated points and level, returns a display string.
+ * Only called when pts > 0 (see computeEffectiveStats).
+ */
 const STAT_COMPUTE = {
   hpPercent: (pts, lvl) => {
+    // 4% max HP per point, bonus = baseHP * pct
     const baseHP = 60 + 10 * (lvl - 1);
     const pct = pts * 4;
     return { value: `${pct}% → +${Math.round(baseHP * pct / 100)} PdV` };
@@ -121,6 +148,11 @@ const STAT_COMPUTE = {
   indirectDmg: () => ({ value: "10% Daño Indirecto, +40 Dominio Elemental" }),
 };
 
+/**
+ * Computes display values for all allocated stats.
+ * Returns an object keyed by stat key with { value } or null if unallocated.
+ * Used in BuildFormDrawer and BuildCard (non-merge stats section).
+ */
 export function computeEffectiveStats(allocStats, level) {
   const result = {};
   for (const [key, fn] of Object.entries(STAT_COMPUTE)) {

@@ -1,3 +1,7 @@
+import statesData from "@/data/states.json";
+
+// Maps item action IDs to icon filenames for stat display.
+// Gain and loss variants of the same stat share an icon.
 const STAT_ICON_MAP = {
   20:  "HP",
   26:  "HEAL_IN_PERCENT",
@@ -9,17 +13,17 @@ const STAT_ICON_MAP = {
   83:  "RES_WATER_PERCENT",
   84:  "RES_EARTH_PERCENT",
   85:  "RES_AIR_PERCENT",
-   90:  "RES_IN_PERCENT",
+  90:  "RES_IN_PERCENT",
   96:  "RES_EARTH_PERCENT",
   97:  "RES_FIRE_PERCENT",
-   98:  "RES_WATER_PERCENT",
+  98:  "RES_WATER_PERCENT",
   100: "RES_IN_PERCENT",
   120: "DMG_IN_PERCENT",
   122: "DMG_FIRE_PERCENT",
   123: "DMG_EARTH_PERCENT",
   124: "DMG_WATER_PERCENT",
   125: "DMG_AIR_PERCENT",
-   130: "DMG_IN_PERCENT",
+  130: "DMG_IN_PERCENT",
   132: "DMG_FIRE_PERCENT",
   149: "CRITICAL_BONUS",
   150: "CRITICAL_BONUS",
@@ -197,14 +201,55 @@ export function parseItemStats(definition, itemLevel) {
 }
 
 /**
- * Aggregate stats from multiple items, summing values by actionId.
- * Items: array of { definition, level }
- * Returns array of stat objects (same shape as parseItemStats return).
+ * Every action ID in items.json is a "gain" or "loss" variant of a stat.
+ * Loss variants share the same canonical ID as the gain variant so they
+ * can be summed together (with the value negated).
+ *
+ * Map: loss actionId → canonical gain actionId
+ * Derived: PENALTY_IDS set and isPenaltyActionId check
  */
+const CANONICAL_ACTION_ID = {
+  90: 80,   100: 80,   96: 84,   97: 82,   98: 83,
+  130: 120, 132: 122,
+  161: 160, 168: 150, 172: 171,
+  174: 173, 176: 175, 181: 180,
+  192: 191,
+  876: 875,
+  1056: 149, 1060: 1053, 1061: 1055,
+  1062: 988, 1063: 71,
+};
+
+const PENALTY_IDS = new Set(
+  Object.keys(CANONICAL_ACTION_ID).map(Number),
+);
+
 function getCanonicalActionId(actionId) {
-  if (actionId === 174) return 173;
-  if (actionId === 176) return 175;
-  return actionId;
+  return CANONICAL_ACTION_ID[actionId] ?? actionId;
+}
+
+function isPenaltyActionId(actionId) {
+  return PENALTY_IDS.has(actionId);
+}
+
+/**
+ * Gets or creates a stats group entry in the byGroup map.
+ * Entries are keyed by canonical actionId (plus element count suffix
+ * for multi-element stats like Dominio/Resistencia a X elementos).
+ * This avoids repeated null checks and object creation boilerplate.
+ */
+function groupEntry(byGroup, actionId, el, numElements) {
+  const key = numElements > 0 ? `${actionId}_${numElements}` : String(actionId);
+  if (!byGroup[key]) {
+    byGroup[key] = {
+      actionId,
+      value: 0,
+      icon: getStatIcon(actionId),
+      element: el ? ELEMENT_NAMES[el] : null,
+      el,
+      numElements,
+    };
+  }
+  return byGroup[key];
 }
 
 export function aggregateItemStats(items) {
@@ -220,27 +265,16 @@ export function aggregateItemStats(items) {
       const meta = ACTION_META[actionId];
       if (!meta) continue;
 
-      const value = computeValue(params, level);
-      if (value === null || value === 0) continue;
+      const rawValue = computeValue(params, level);
+      if (rawValue === null || rawValue === 0) continue;
 
       const canonicalId = getCanonicalActionId(actionId);
+      const finalValue = isPenaltyActionId(actionId) ? -rawValue : rawValue;
       const numElements =
         (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
           ? params[2]
           : 0;
-      const groupKey = numElements > 0 ? `${canonicalId}_${numElements}` : String(canonicalId);
-
-      if (!byGroup[groupKey]) {
-        byGroup[groupKey] = {
-          actionId: canonicalId,
-          value: 0,
-          icon: getStatIcon(canonicalId),
-          element: meta.el ? ELEMENT_NAMES[meta.el] : null,
-          el: meta.el,
-          numElements,
-        };
-      }
-      byGroup[groupKey].value += value;
+      groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
     }
   }
 
@@ -259,6 +293,11 @@ export function aggregateItemStats(items) {
   });
 }
 
+/**
+ * Maps character allocation stat keys to item action IDs and rates.
+ * Each allocated point contributes `pts * rate` to the actionId group.
+ * Some stats map to multiple actionIds (e.g. pmDmg gives PM + Dominio).
+ */
 const CHAR_TO_ACTION = {
   resistElemental: [{ actionId: 80, rate: 10 }],
   domElemental: [{ actionId: 120, rate: 5 }],
@@ -286,6 +325,18 @@ const CHAR_TO_ACTION = {
   indirectDmg: [{ actionId: 120, rate: 40 }],
 };
 
+/**
+ * Merges item stats and character allocation stats into a single
+ * display-ready array.
+ *
+ * Algorithm — three phases:
+ *   Phase 1 — Item effects: iterate each item's equipEffects, canonicalize
+ *     the actionId (loss→gain), negate penalty values, sum by group.
+ *   Phase 2 — Char allocation: map each allocated stat key through
+ *     CHAR_TO_ACTION (e.g. "pa" → [{actionId:31, rate:1}]) and add.
+ *   Phase 3 — Base & derived: inject base PA/PM/PW/crit that every
+ *     character has, compute total HP from base + flat + %.
+ */
 export function mergeItemAndCharStats(items, allocStats, level) {
   const byGroup = {};
 
@@ -298,25 +349,15 @@ export function mergeItemAndCharStats(items, allocStats, level) {
       const { actionId, params } = def;
       const meta = ACTION_META[actionId];
       if (!meta) continue;
-      const value = computeValue(params, level);
-      if (value === null || value === 0) continue;
+      const rawValue = computeValue(params, level);
+      if (rawValue === null || rawValue === 0) continue;
       const canonicalId = getCanonicalActionId(actionId);
+      const finalValue = isPenaltyActionId(actionId) ? -rawValue : rawValue;
       const numElements =
         (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
           ? params[2]
           : 0;
-      const groupKey = numElements > 0 ? `${canonicalId}_${numElements}` : String(canonicalId);
-      if (!byGroup[groupKey]) {
-        byGroup[groupKey] = {
-          actionId: canonicalId,
-          value: 0,
-          icon: getStatIcon(canonicalId),
-          element: meta.el ? ELEMENT_NAMES[meta.el] : null,
-          el: meta.el,
-          numElements,
-        };
-      }
-      byGroup[groupKey].value += value;
+      groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
     }
   }
 
@@ -325,18 +366,7 @@ export function mergeItemAndCharStats(items, allocStats, level) {
     const mapping = CHAR_TO_ACTION[key];
     if (!mapping) continue;
     for (const { actionId, rate } of mapping) {
-      const groupKey = String(actionId);
-      if (!byGroup[groupKey]) {
-        byGroup[groupKey] = {
-          actionId,
-          value: 0,
-          icon: getStatIcon(actionId),
-          element: null,
-          el: null,
-          numElements: 0,
-        };
-      }
-      byGroup[groupKey].value += pts * rate;
+      groupEntry(byGroup, actionId, null, 0).value += pts * rate;
     }
   }
 
@@ -344,17 +374,7 @@ export function mergeItemAndCharStats(items, allocStats, level) {
   const hpPctPts = allocStats.hpPercent || 0;
   const flatPdV = byGroup["20"]?.value || 0;
   const totalHP = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
-  if (!byGroup["20"]) {
-    byGroup["20"] = {
-      actionId: 20,
-      value: 0,
-      icon: getStatIcon(20),
-      element: null,
-      el: null,
-      numElements: 0,
-    };
-  }
-  byGroup["20"].value = totalHP;
+  groupEntry(byGroup, 20, null, 0).value = totalHP;
 
   const BASE_STATS = [
     { actionId: 31, base: 6 },
@@ -364,18 +384,7 @@ export function mergeItemAndCharStats(items, allocStats, level) {
   ];
 
   for (const { actionId, base } of BASE_STATS) {
-    const key = String(actionId);
-    if (!byGroup[key]) {
-      byGroup[key] = {
-        actionId,
-        value: 0,
-        icon: getStatIcon(actionId),
-        element: null,
-        el: null,
-        numElements: 0,
-      };
-    }
-    byGroup[key].value += base;
+    groupEntry(byGroup, actionId, null, 0).value += base;
   }
 
   return Object.values(byGroup).map((s) => {
@@ -395,13 +404,28 @@ export function mergeItemAndCharStats(items, allocStats, level) {
 }
 
 /**
+ * Look up the state name for an item that has an actionId 304 effect.
+ * Returns the Spanish name or null if no state effect is found.
+ */
+function getItemStateData(item) {
+  const stateEffect = item.definition?.equipEffects?.find(
+    (ee) => ee.effect?.definition?.actionId === 304
+  );
+  if (!stateEffect) return null;
+  const stateId = stateEffect.effect.definition.params[0];
+  const state = statesData.find((s) => s.definition.id === stateId);
+  if (!state) return null;
+  return {
+    name: state?.title?.es || state?.title?.en || null,
+    description: state?.description?.es || null,
+  };
+}
+
+/**
  * Extract item info for search/indexing.
  */
 export function extractItemInfo(item) {
-  const effects = item.definition?.equipEffects || [];
-  const hasState = effects.some(
-    (ee) => ee.effect?.definition?.actionId === 304
-  );
+  const stateData = getItemStateData(item);
   const sublimationParams = item.definition?.item?.sublimationParameters;
   return {
     id: item.definition.item.id,
@@ -410,7 +434,8 @@ export function extractItemInfo(item) {
     typeId: item.definition.item.baseParameters.itemTypeId,
     gfxId: item.definition.item.graphicParameters.gfxId,
     rarity: item.definition.item.baseParameters.rarity,
-    hasState,
+    stateName: stateData?.name || null,
+    stateDescription: stateData?.description || null,
     sublimationParams,
     definition: item.definition,
   };
