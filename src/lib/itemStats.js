@@ -337,7 +337,16 @@ const CHAR_TO_ACTION = {
  *   Phase 3 — Base & derived: inject base PA/PM/PW/crit that every
  *     character has, compute total HP from base + flat + %.
  */
-export function mergeItemAndCharStats(items, allocStats, level) {
+const CLASS_PASSIVES = {
+  sacro: [{ actionId: 20, getValue: (lvl) => lvl * 4 }],
+  eni:   [{ actionId: 20, getValue: (lvl) => lvl * 2 }],
+  sram:  [{ actionId: 150, getValue: () => 20 }],
+  ocra:  [{ actionId: 160, getValue: () => 1 }],
+  yop:   [{ actionId: 41, getValue: () => 1 }],
+  zurka: [{ actionId: 150, getValue: () => 20 }],
+};
+
+export function mergeItemAndCharStats(items, allocStats, level, className) {
   const byGroup = {};
 
   for (const { definition, level } of items) {
@@ -370,9 +379,31 @@ export function mergeItemAndCharStats(items, allocStats, level) {
     }
   }
 
+  let classFlatHP = 0;
+  if (className) {
+    const passives = CLASS_PASSIVES[className];
+    if (passives) {
+      for (const { actionId, getValue } of passives) {
+        const val = getValue(level);
+        if (actionId === 20) {
+          classFlatHP += val;
+        } else {
+          groupEntry(byGroup, actionId, null, 0).value += val;
+        }
+      }
+    }
+    if (className === "selo") {
+      const rangeFromGear = byGroup["160"]?.value || 0;
+      if (rangeFromGear >= 2) {
+        groupEntry(byGroup, 41, null, 0).value += 1;
+        groupEntry(byGroup, 160, null, 0).value -= 2;
+      }
+    }
+  }
+
   const baseHP = 60 + 10 * (level - 1);
   const hpPctPts = allocStats.hpPercent || 0;
-  const flatPdV = byGroup["20"]?.value || 0;
+  const flatPdV = (byGroup["20"]?.value || 0) + classFlatHP;
   const totalHP = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
   groupEntry(byGroup, 20, null, 0).value = totalHP;
 

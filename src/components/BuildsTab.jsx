@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabase";
 import * as db from "@/lib/db";
 import ClassIcon from "@/components/ClassIcon";
 import {
@@ -188,7 +189,7 @@ function ItemTooltip({ item }) {
 }
 
 /** Individual build card display */
-function BuildCard({ build, itemLookup, onEdit }) {
+function BuildCard({ build, itemLookup, onEdit, charClass }) {
   const socketsByEq = groupSocketsByEquipment(build.wakfubuild_sockets);
 
   const ROW_1 = ["head", "neck", "chest", "back", "shoulders", "belt", "legs"];
@@ -221,9 +222,10 @@ function BuildCard({ build, itemLookup, onEdit }) {
       itemInputs,
       build.stats || {},
       build.level,
+      charClass,
     );
     return processStats(merged).sort((a, b) => statSortKey(a) - statSortKey(b));
-  }, [build, itemLookup]);
+  }, [build, itemLookup, charClass]);
 
   const charEffects = useMemo(
     () => computeEffectiveStats(build.stats || {}, build.level),
@@ -1182,6 +1184,7 @@ function BuildFormDrawer({
                     equippedItems,
                     allocStats,
                     parseInt(level) || 1,
+                    character.class,
                   ),
                 ).sort((a, b) => statSortKey(a) - statSortKey(b));
                 const charEffects = computeEffectiveStats(
@@ -1439,6 +1442,15 @@ export default function BuildsTab() {
       allItems.current = mod.default.map(extractItemInfo);
       setItemsLoaded(true);
     });
+    const channel = supabase
+      .channel("wakfurewards-builds")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wakfurewards" },
+        () => loadData(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   async function addBuild(characterId, level, equipment, socketsData, stats) {
@@ -1608,6 +1620,7 @@ export default function BuildsTab() {
                           key={build.id}
                           build={build}
                           itemLookup={itemLookup}
+                          charClass={char.class}
                           onEdit={(b) => {
                             setEditingBuild(b);
                             setCreatingForChar(char);
