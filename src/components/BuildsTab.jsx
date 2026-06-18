@@ -224,7 +224,9 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
       build.level,
       charClass,
     );
-    return processStats(merged).sort((a, b) => statSortKey(a) - statSortKey(b));
+    return processStats(merged)
+      .filter((s) => s.type === "elemental_res" || s.value !== 0)
+      .sort((a, b) => statSortKey(a) - statSortKey(b));
   }, [build, itemLookup, charClass]);
 
   const charEffects = useMemo(
@@ -1186,7 +1188,9 @@ function BuildFormDrawer({
                     parseInt(level) || 1,
                     character.class,
                   ),
-                ).sort((a, b) => statSortKey(a) - statSortKey(b));
+                )
+                  .filter((s) => s.type === "elemental_res" || s.value !== 0)
+                  .sort((a, b) => statSortKey(a) - statSortKey(b));
                 const charEffects = computeEffectiveStats(
                   allocStats,
                   parseInt(level) || 1,
