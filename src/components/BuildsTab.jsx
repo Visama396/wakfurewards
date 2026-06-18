@@ -1085,24 +1085,14 @@ function BuildFormDrawer({
                               </span>
                             </div>
                             {item.stateName && (
-                              item.stateDescription ? (
-                                <TooltipProvider delayDuration={0}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block cursor-help">
-                                        {item.stateName}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" className="text-xs max-w-64">
-                                      <span dangerouslySetInnerHTML={{ __html: item.stateDescription }} />
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ) : (
-                                <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
-                                  {item.stateName}
-                                </span>
-                              )
+                              <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
+                                {item.stateName}
+                              </span>
+                            )}
+                            {item.stateDescription && (
+                              <div className="text-[10px] text-gray-400 mt-0.5 leading-tight"
+                                dangerouslySetInnerHTML={{ __html: item.stateDescription }}
+                              />
                             )}
                           </div>
                         </div>
