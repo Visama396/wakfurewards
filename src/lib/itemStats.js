@@ -340,22 +340,42 @@ export function mergeItemAndCharStats(items, allocStats, level) {
     }
   }
 
+  const baseHP = 60 + 10 * (level - 1);
   const hpPctPts = allocStats.hpPercent || 0;
-  if (hpPctPts > 0 || byGroup["20"]) {
-    const baseHP = 60 + 10 * (level - 1);
-    const flatPdV = byGroup["20"]?.value || 0;
-    const total = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
-    if (!byGroup["20"]) {
-      byGroup["20"] = {
-        actionId: 20,
+  const flatPdV = byGroup["20"]?.value || 0;
+  const totalHP = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
+  if (!byGroup["20"]) {
+    byGroup["20"] = {
+      actionId: 20,
+      value: 0,
+      icon: getStatIcon(20),
+      element: null,
+      el: null,
+      numElements: 0,
+    };
+  }
+  byGroup["20"].value = totalHP;
+
+  const BASE_STATS = [
+    { actionId: 31, base: 6 },
+    { actionId: 41, base: 3 },
+    { actionId: 191, base: 6 },
+    { actionId: 150, base: 3 },
+  ];
+
+  for (const { actionId, base } of BASE_STATS) {
+    const key = String(actionId);
+    if (!byGroup[key]) {
+      byGroup[key] = {
+        actionId,
         value: 0,
-        icon: getStatIcon(20),
+        icon: getStatIcon(actionId),
         element: null,
         el: null,
         numElements: 0,
       };
     }
-    byGroup["20"].value = total;
+    byGroup[key].value += base;
   }
 
   return Object.values(byGroup).map((s) => {
