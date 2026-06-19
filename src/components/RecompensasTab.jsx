@@ -37,7 +37,9 @@ export default function RecompensasTab({
   const [builderDungeonId, setBuilderDungeonId] = useState(null);
   const [builderPresetChar, setBuilderPresetChar] = useState(null);
   const [builderResult, setBuilderResult] = useState(null);
-  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(new Set());
+  const [builderRerolearExcludedIds, setBuilderRerolearExcludedIds] = useState(
+    new Set(),
+  );
 
   const scrollRef = useRef(null);
   const canDrag = useIsFinePointer();
@@ -58,7 +60,9 @@ export default function RecompensasTab({
         () => loadData(),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function loadData() {
@@ -80,7 +84,9 @@ export default function RecompensasTab({
   });
 
   const charMap = {};
-  characters.forEach((c) => { charMap[c.id] = c; });
+  characters.forEach((c) => {
+    charMap[c.id] = c;
+  });
 
   const dungRewardMap = {};
   rewards.forEach((r) => {
@@ -109,13 +115,7 @@ export default function RecompensasTab({
     return a.localeCompare(b);
   });
 
-  const availableRoles = [
-    ...new Set(
-      sortedChars
-        .filter((c) => c.charrole !== "Padre Ausente")
-        .map((c) => c.charrole),
-    ),
-  ].filter(Boolean).sort();
+  const availableRoles = ["distancia", "mele", "apoyo", "xD"];
 
   const searchFilteredInactives = (
     playerFilter
@@ -184,7 +184,9 @@ export default function RecompensasTab({
       const char = charMap[charId];
       const dung = dungeons.find((d) => d.id === parseInt(dungId));
       const sufijo = char?.gender === 1 ? "añadida" : "añadido";
-      toast.success(`${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`);
+      toast.success(
+        `${char?.char || "Personaje"} ${sufijo} a ${dung?.name || "mazmorra"}`,
+      );
       loadData();
     } catch (e) {
       console.error("Error al insertar:", e);
@@ -217,13 +219,46 @@ export default function RecompensasTab({
   }
 
   async function togglePadreAusente(character) {
-    const nuevoRol = character.charrole === "Padre Ausente" ? "xD" : "Padre Ausente";
+    let nuevoRol;
+    let nuevosSubroles = [...(character.charsubroles || [])];
+
+    if (character.charrole === "Padre Ausente") {
+      const rolesValidos = ["mele", "distancia", "apoyo", "xD"];
+      const rolRecuperado = nuevosSubroles.find((r) =>
+        rolesValidos.includes(r),
+      );
+
+      if (rolRecuperado) {
+        nuevoRol = rolRecuperado;
+        nuevosSubroles = nuevosSubroles.filter((r) => r !== rolRecuperado);
+      } else {
+        nuevoRol = "xD";
+      }
+    } else {
+      const rolesAEvitar = ["mele", "distancia", "apoyo", "xD"];
+      nuevosSubroles = nuevosSubroles.filter((r) => !rolesAEvitar.includes(r));
+
+      if (character.charrole && character.charrole !== "Padre Ausente") {
+        nuevosSubroles.push(character.charrole);
+      }
+      nuevoRol = "Padre Ausente";
+    }
+
     try {
-      await db.togglePadreAusente(character.id, nuevoRol);
+      const { error } = await supabase
+        .from("wakfuchars")
+        .update({
+          charrole: nuevoRol,
+          charsubroles: nuevosSubroles,
+        })
+        .eq("id", character.id);
+
+      if (error) throw error;
+
       toast.success(
         nuevoRol === "Padre Ausente"
           ? `${character.char} enviado a Padre Ausente`
-          : `${character.char} ha regresado a la lista activa`,
+          : `${character.char} ha regresado como ${nuevoRol}`,
       );
       await loadData();
     } catch (e) {
@@ -259,7 +294,11 @@ export default function RecompensasTab({
       if (child.hasAttribute("data-placeholder")) continue;
       const childRect = child.getBoundingClientRect();
       if (childRect.width === 0) continue;
-      const childRight = childRect.left - containerRect.left + childRect.width + container.scrollLeft;
+      const childRight =
+        childRect.left -
+        containerRect.left +
+        childRect.width +
+        container.scrollLeft;
       if (cursorX > childRight - 8) idx = i + 1;
     }
     setListInsertIdx(Math.min(idx, visibleDungeons.length));
@@ -307,16 +346,23 @@ export default function RecompensasTab({
   function renderPlaceholder() {
     if (showDungeonPicker) {
       return (
-        <div data-placeholder="true" className="bg-[#163544] rounded-lg p-3 shrink-0 min-w-80 flex flex-col gap-2 border-2 border-dashed border-orange-400/60 text-sm">
+        <div
+          data-placeholder="true"
+          className="bg-[#163544] rounded-lg p-3 shrink-0 min-w-80 flex flex-col gap-2 border-2 border-dashed border-orange-400/60 text-sm"
+        >
           <p className="font-medium text-orange-300">
             Añadir {draggedChar?.char || "personaje"}
           </p>
           <Combobox
-            items={dungeons.filter((d) => !completedDungIdsForDragChar.has(d.id))}
+            items={dungeons.filter(
+              (d) => !completedDungIdsForDragChar.has(d.id),
+            )}
             value={pickerDungeon}
             onValueChange={(item) => setPickerDungeon(item)}
             itemToStringLabel={(item) => (item ? item.name : "")}
-            itemToStringValue={(item) => (item && item.id ? item.id.toString() : "")}
+            itemToStringValue={(item) =>
+              item && item.id ? item.id.toString() : ""
+            }
           >
             <ComboboxInput placeholder="Buscar mazmorra..." />
             <ComboboxContent className="bg-[#163544] border border-gray-600 text-white">
@@ -338,7 +384,9 @@ export default function RecompensasTab({
               className="flex-1 bg-[#0d2733] border border-gray-600 rounded text-center text-sm py-1"
             >
               {STASIS_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}</option>
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </div>
@@ -353,7 +401,10 @@ export default function RecompensasTab({
       );
     }
     return (
-      <div data-placeholder="true" className="bg-[#163544]/50 rounded-lg p-3 shrink-0 min-w-80 flex flex-col items-center justify-center border-2 border-dashed border-orange-400/60 text-gray-400 text-sm pointer-events-none">
+      <div
+        data-placeholder="true"
+        className="bg-[#163544]/50 rounded-lg p-3 shrink-0 min-w-80 flex flex-col items-center justify-center border-2 border-dashed border-orange-400/60 text-gray-400 text-sm pointer-events-none"
+      >
         Suelta aquí para elegir mazmorra
       </div>
     );
@@ -468,9 +519,7 @@ export default function RecompensasTab({
               return items;
             })}
             {listDragOver && visibleDungeons.length === listInsertIdx && (
-              <Fragment key="placeholder-end">
-                {renderPlaceholder()}
-              </Fragment>
+              <Fragment key="placeholder-end">{renderPlaceholder()}</Fragment>
             )}
           </div>
         </section>

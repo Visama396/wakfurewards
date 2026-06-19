@@ -40,13 +40,16 @@ export default function RoleSelector({
             ? "bg-gray-500 text-white"
             : "bg-gray-900/40 text-gray-400 border-gray-700");
 
+        // Corrección visual para mostrar Melé con tilde manteniendo la clave 'mele' del CSS
+        const labelVisual = role === "mele" ? "melé" : role;
+
         return (
           <button
             key={role}
             onClick={() => setRoleFilter(role)}
-            className={`px-2.5 py-1 text-xs rounded border transition-all ${currentClass}`}
+            className={`px-2.5 py-1 text-xs rounded border transition-all capitalize ${currentClass}`}
           >
-            {role}
+            {labelVisual}
           </button>
         );
       })}
