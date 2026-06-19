@@ -42,7 +42,9 @@ const SPREADSHEET_TO_APP = {
 };
 
 export default function App() {
-  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(new Set());
+  const [highlightedDungeonNames, setHighlightedDungeonNames] = useState(
+    new Set(),
+  );
   const [moduloxDungeonNames, setModuloxDungeonNames] = useState(new Set());
   const [menuOpen, setMenuOpen] = useState(false);
 

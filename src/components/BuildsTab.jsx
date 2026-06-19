@@ -132,7 +132,8 @@ function ItemTooltip({ item }) {
                 {item.stateName}
               </span>
               {item.stateDescription && (
-                <div className="text-[10px] text-gray-400 mt-0.5 leading-tight max-w-48"
+                <div
+                  className="text-[10px] text-gray-400 mt-0.5 leading-tight max-w-48"
                   dangerouslySetInnerHTML={{ __html: item.stateDescription }}
                 />
               )}
@@ -1094,8 +1095,11 @@ function BuildFormDrawer({
                               </span>
                             )}
                             {item.stateDescription && (
-                              <div className="text-[10px] text-gray-400 mt-0.5 leading-tight"
-                                dangerouslySetInnerHTML={{ __html: item.stateDescription }}
+                              <div
+                                className="text-[10px] text-gray-400 mt-0.5 leading-tight"
+                                dangerouslySetInnerHTML={{
+                                  __html: item.stateDescription,
+                                }}
                               />
                             )}
                           </div>
@@ -1454,7 +1458,9 @@ export default function BuildsTab() {
         () => loadData(),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function addBuild(characterId, level, equipment, socketsData, stats) {
