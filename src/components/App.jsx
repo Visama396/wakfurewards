@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import pkg from "../../package.json";
 import { Menu, X } from "lucide-react";
 import DailiesButton from "@/components/DailiesButton";
+import { resetRewards } from "@/lib/db";
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import RecompensasTab from "@/components/RecompensasTab";
@@ -89,7 +90,7 @@ export default function App() {
   return (
     <Tabs
       defaultValue="recompensas"
-      className="p-4 space-y-6 flex flex-col min-h-screen gap-0"
+      className="p-4 space-y-6 flex flex-col min-h-screen lg:h-screen gap-0 overflow-hidden"
     >
       <header className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center justify-between sm:hidden">
@@ -119,6 +120,14 @@ export default function App() {
             dailyDungeons={highlightedDungeonNames}
             moduloxDungeons={moduloxDungeonNames}
           />
+          <button
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
+            onClick={() => {
+              if (window.confirm("¿Resetear todas las recompensas?")) resetRewards();
+            }}
+          >
+            Resetear
+          </button>
         </div>
       </header>
 
@@ -180,6 +189,17 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-3">
               <span className="text-sm text-gray-400">{countdown()}</span>
+              <button
+                className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-2 rounded hover:cursor-pointer text-sm w-fit"
+                onClick={() => {
+                  if (window.confirm("¿Resetear todas las recompensas?")) {
+                    resetRewards();
+                    setMenuOpen(false);
+                  }
+                }}
+              >
+                Resetear
+              </button>
               <DailiesButton
                 dailyDungeons={highlightedDungeonNames}
                 moduloxDungeons={moduloxDungeonNames}

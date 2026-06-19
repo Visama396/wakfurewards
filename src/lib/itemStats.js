@@ -1,3 +1,7 @@
+import statesData from "@/data/states.json";
+
+// Maps item action IDs to icon filenames for stat display.
+// Gain and loss variants of the same stat share an icon.
 const STAT_ICON_MAP = {
   20:  "HP",
   26:  "HEAL_IN_PERCENT",
@@ -9,17 +13,17 @@ const STAT_ICON_MAP = {
   83:  "RES_WATER_PERCENT",
   84:  "RES_EARTH_PERCENT",
   85:  "RES_AIR_PERCENT",
-   90:  "RES_IN_PERCENT",
+  90:  "RES_IN_PERCENT",
   96:  "RES_EARTH_PERCENT",
   97:  "RES_FIRE_PERCENT",
-   98:  "RES_WATER_PERCENT",
+  98:  "RES_WATER_PERCENT",
   100: "RES_IN_PERCENT",
   120: "DMG_IN_PERCENT",
   122: "DMG_FIRE_PERCENT",
   123: "DMG_EARTH_PERCENT",
   124: "DMG_WATER_PERCENT",
   125: "DMG_AIR_PERCENT",
-   130: "DMG_IN_PERCENT",
+  130: "DMG_IN_PERCENT",
   132: "DMG_FIRE_PERCENT",
   149: "CRITICAL_BONUS",
   150: "CRITICAL_BONUS",
@@ -117,7 +121,7 @@ const ACTION_META = {
    181: { tpl: "-[#1] Dominio Espalda", el: null },
   184: { tpl: "[#1] Control", el: null },
   191: { tpl: "[#1] PW", el: null },
-  192: { tpl: "[#1] PW", el: null },
+   192: { tpl: "-[#1] PW máx.", el: null },
   400: null,
   875: { tpl: "[#1]% Anticipación", el: null },
    876: { tpl: "-[#1]% Anticipación", el: null },
@@ -197,13 +201,262 @@ export function parseItemStats(definition, itemLevel) {
 }
 
 /**
+ * Every action ID in items.json is a "gain" or "loss" variant of a stat.
+ * Loss variants share the same canonical ID as the gain variant so they
+ * can be summed together (with the value negated).
+ *
+ * Map: loss actionId → canonical gain actionId
+ * Derived: PENALTY_IDS set and isPenaltyActionId check
+ */
+const CANONICAL_ACTION_ID = {
+  90: 80,   100: 80,   96: 84,   97: 82,   98: 83,
+  130: 120, 132: 122,
+  161: 160, 168: 150, 172: 171,
+  174: 173, 176: 175, 181: 180,
+  192: 191,
+  876: 875,
+  1056: 149, 1060: 1053, 1061: 1055,
+  1062: 988, 1063: 71,
+};
+
+const PENALTY_IDS = new Set(
+  Object.keys(CANONICAL_ACTION_ID).map(Number),
+);
+
+function getCanonicalActionId(actionId) {
+  return CANONICAL_ACTION_ID[actionId] ?? actionId;
+}
+
+function isPenaltyActionId(actionId) {
+  return PENALTY_IDS.has(actionId);
+}
+
+/**
+ * Gets or creates a stats group entry in the byGroup map.
+ * Entries are keyed by canonical actionId (plus element count suffix
+ * for multi-element stats like Dominio/Resistencia a X elementos).
+ * This avoids repeated null checks and object creation boilerplate.
+ */
+function groupEntry(byGroup, actionId, el, numElements) {
+  const key = numElements > 0 ? `${actionId}_${numElements}` : String(actionId);
+  if (!byGroup[key]) {
+    byGroup[key] = {
+      actionId,
+      value: 0,
+      icon: getStatIcon(actionId),
+      element: el ? ELEMENT_NAMES[el] : null,
+      el,
+      numElements,
+    };
+  }
+  return byGroup[key];
+}
+
+export function aggregateItemStats(items) {
+  const byGroup = {};
+
+  for (const { definition, level } of items) {
+    const effects = definition?.equipEffects;
+    if (!effects) continue;
+    for (const ee of effects) {
+      const def = ee.effect?.definition;
+      if (!def) continue;
+      const { actionId, params } = def;
+      const meta = ACTION_META[actionId];
+      if (!meta) continue;
+
+      const rawValue = computeValue(params, level);
+      if (rawValue === null || rawValue === 0) continue;
+
+      const canonicalId = getCanonicalActionId(actionId);
+      const finalValue = isPenaltyActionId(actionId) ? -rawValue : rawValue;
+      const numElements =
+        (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
+          ? params[2]
+          : 0;
+      groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
+    }
+  }
+
+  return Object.values(byGroup).map((s) => {
+    const meta = ACTION_META[s.actionId];
+    let label = renderTemplate(meta.tpl, String(s.value), s.el);
+    if (s.numElements > 0) label = `${label} a ${s.numElements} elementos`;
+    return {
+      actionId: s.actionId,
+      label,
+      value: s.value,
+      icon: s.icon,
+      className: getActionColor(label),
+      element: s.element,
+    };
+  });
+}
+
+/**
+ * Maps character allocation stat keys to item action IDs and rates.
+ * Each allocated point contributes `pts * rate` to the actionId group.
+ * Some stats map to multiple actionIds (e.g. pmDmg gives PM + Dominio).
+ */
+const CHAR_TO_ACTION = {
+  resistElemental: [{ actionId: 80, rate: 10 }],
+  domElemental: [{ actionId: 120, rate: 5 }],
+  domMelee: [{ actionId: 1052, rate: 8 }],
+  domDistancia: [{ actionId: 1053, rate: 8 }],
+  pv: [{ actionId: 20, rate: 20 }],
+  placaje: [{ actionId: 173, rate: 6 }],
+  esquiva: [{ actionId: 175, rate: 6 }],
+  iniciativa: [{ actionId: 171, rate: 4 }],
+  placajeEsquiva: [{ actionId: 173, rate: 4 }, { actionId: 175, rate: 4 }],
+  voluntad: [{ actionId: 177, rate: 1 }],
+  critPercent: [{ actionId: 150, rate: 1 }],
+  anticipacionPercent: [{ actionId: 875, rate: 1 }],
+  domCritico: [{ actionId: 149, rate: 4 }],
+  domEspalda: [{ actionId: 180, rate: 6 }],
+  domBerserker: [{ actionId: 1055, rate: 8 }],
+  domCuras: [{ actionId: 26, rate: 6 }],
+  resistEspalda: [{ actionId: 71, rate: 4 }],
+  resistCritica: [{ actionId: 988, rate: 4 }],
+  pa: [{ actionId: 31, rate: 1 }],
+  pmDmg: [{ actionId: 41, rate: 1 }, { actionId: 120, rate: 20 }],
+  rangeDmg: [{ actionId: 160, rate: 1 }, { actionId: 120, rate: 40 }],
+  pw2: [{ actionId: 191, rate: 2 }],
+  resistPercent: [{ actionId: 80, rate: 50 }],
+  indirectDmg: [{ actionId: 120, rate: 40 }],
+};
+
+/**
+ * Merges item stats and character allocation stats into a single
+ * display-ready array.
+ *
+ * Algorithm — three phases:
+ *   Phase 1 — Item effects: iterate each item's equipEffects, canonicalize
+ *     the actionId (loss→gain), negate penalty values, sum by group.
+ *   Phase 2 — Char allocation: map each allocated stat key through
+ *     CHAR_TO_ACTION (e.g. "pa" → [{actionId:31, rate:1}]) and add.
+ *   Phase 3 — Base & derived: inject base PA/PM/PW/crit that every
+ *     character has, compute total HP from base + flat + %.
+ */
+const CLASS_PASSIVES = {
+  sacro: [{ actionId: 20, getValue: (lvl) => lvl * 4 }],
+  eni:   [{ actionId: 20, getValue: (lvl) => lvl * 2 }],
+  sram:  [{ actionId: 150, getValue: () => 20 }],
+  ocra:  [{ actionId: 160, getValue: () => 1 }],
+  yop:   [{ actionId: 41, getValue: () => 1 }],
+  zurka: [{ actionId: 150, getValue: () => 20 }],
+};
+
+export function mergeItemAndCharStats(items, allocStats, level, className) {
+  const byGroup = {};
+
+  for (const { definition, level } of items) {
+    const effects = definition?.equipEffects;
+    if (!effects) continue;
+    for (const ee of effects) {
+      const def = ee.effect?.definition;
+      if (!def) continue;
+      const { actionId, params } = def;
+      const meta = ACTION_META[actionId];
+      if (!meta) continue;
+      const rawValue = computeValue(params, level);
+      if (rawValue === null || rawValue === 0) continue;
+      const canonicalId = getCanonicalActionId(actionId);
+      const finalValue = isPenaltyActionId(actionId) ? -rawValue : rawValue;
+      const numElements =
+        (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
+          ? params[2]
+          : 0;
+      groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
+    }
+  }
+
+  for (const [key, pts] of Object.entries(allocStats)) {
+    if (!pts) continue;
+    const mapping = CHAR_TO_ACTION[key];
+    if (!mapping) continue;
+    for (const { actionId, rate } of mapping) {
+      groupEntry(byGroup, actionId, null, 0).value += pts * rate;
+    }
+  }
+
+  let classFlatHP = 0;
+  if (className) {
+    const passives = CLASS_PASSIVES[className];
+    if (passives) {
+      for (const { actionId, getValue } of passives) {
+        const val = getValue(level);
+        if (actionId === 20) {
+          classFlatHP += val;
+        } else {
+          groupEntry(byGroup, actionId, null, 0).value += val;
+        }
+      }
+    }
+    if (className === "selo") {
+      const rangeFromGear = byGroup["160"]?.value || 0;
+      if (rangeFromGear >= 2) {
+        groupEntry(byGroup, 41, null, 0).value += 1;
+        groupEntry(byGroup, 160, null, 0).value -= 2;
+      }
+    }
+  }
+
+  const baseHP = 60 + 10 * (level - 1);
+  const hpPctPts = allocStats.hpPercent || 0;
+  const flatPdV = (byGroup["20"]?.value || 0) + classFlatHP;
+  const totalHP = Math.round((baseHP + flatPdV) * (1 + hpPctPts * 0.04));
+  groupEntry(byGroup, 20, null, 0).value = totalHP;
+
+  const BASE_STATS = [
+    { actionId: 31, base: 6 },
+    { actionId: 41, base: 3 },
+    { actionId: 191, base: 6 },
+    { actionId: 150, base: 3 },
+  ];
+
+  for (const { actionId, base } of BASE_STATS) {
+    groupEntry(byGroup, actionId, null, 0).value += base;
+  }
+
+  return Object.values(byGroup).map((s) => {
+    const meta = ACTION_META[s.actionId];
+    if (!meta) return null;
+    let label = renderTemplate(meta.tpl, String(s.value), s.el);
+    if (s.numElements > 0) label = `${label} a ${s.numElements} elementos`;
+    return {
+      actionId: s.actionId,
+      label,
+      value: s.value,
+      icon: s.icon,
+      className: getActionColor(label),
+      element: s.element,
+    };
+  }).filter(Boolean);
+}
+
+/**
+ * Look up the state name for an item that has an actionId 304 effect.
+ * Returns the Spanish name or null if no state effect is found.
+ */
+function getItemStateData(item) {
+  const stateEffect = item.definition?.equipEffects?.find(
+    (ee) => ee.effect?.definition?.actionId === 304
+  );
+  if (!stateEffect) return null;
+  const stateId = stateEffect.effect.definition.params[0];
+  const state = statesData.find((s) => s.definition.id === stateId);
+  if (!state) return null;
+  return {
+    name: state?.title?.es || state?.title?.en || null,
+    description: state?.description?.es || null,
+  };
+}
+
+/**
  * Extract item info for search/indexing.
  */
 export function extractItemInfo(item) {
-  const effects = item.definition?.equipEffects || [];
-  const hasState = effects.some(
-    (ee) => ee.effect?.definition?.actionId === 304
-  );
+  const stateData = getItemStateData(item);
   const sublimationParams = item.definition?.item?.sublimationParameters;
   return {
     id: item.definition.item.id,
@@ -212,7 +465,8 @@ export function extractItemInfo(item) {
     typeId: item.definition.item.baseParameters.itemTypeId,
     gfxId: item.definition.item.graphicParameters.gfxId,
     rarity: item.definition.item.baseParameters.rarity,
-    hasState,
+    stateName: stateData?.name || null,
+    stateDescription: stateData?.description || null,
     sublimationParams,
     definition: item.definition,
   };

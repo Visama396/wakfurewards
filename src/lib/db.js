@@ -79,7 +79,7 @@ export async function addDungeonTeamReward(dungId, teamMembers, stasis) {
   if (error) throw error;
 }
 
-export async function addBuild(characterId, level, equipment, socketsData) {
+export async function addBuild(characterId, level, equipment, socketsData, stats) {
   const cleanEq = {};
   for (const [key, val] of Object.entries(equipment)) {
     if (val) cleanEq[key] = typeof val === "string" ? val.trim() : val;
@@ -87,7 +87,7 @@ export async function addBuild(characterId, level, equipment, socketsData) {
 
   const { data: build, error } = await supabase
     .from("wakfubuilds")
-    .insert({ character: parseInt(characterId), level: parseInt(level), ...cleanEq })
+    .insert({ character: parseInt(characterId), level: parseInt(level), stats: stats || {}, ...cleanEq })
     .select()
     .single();
 
@@ -98,7 +98,7 @@ export async function addBuild(characterId, level, equipment, socketsData) {
     for (const slot of slots) {
       if (slot.level > 0) {
         socketInserts.push({
-          build_id: build.id,
+          build: build.id,
           equipment: eq,
           slot_index: slot.slot_index,
           level: slot.level,
@@ -116,7 +116,7 @@ export async function addBuild(characterId, level, equipment, socketsData) {
   return build;
 }
 
-export async function updateBuild(buildId, level, equipment, socketsData) {
+export async function updateBuild(buildId, level, equipment, socketsData, stats) {
   const cleanEq = {};
   for (const [key, val] of Object.entries(equipment)) {
     if (val) cleanEq[key] = typeof val === "string" ? val.trim() : val;
@@ -124,7 +124,7 @@ export async function updateBuild(buildId, level, equipment, socketsData) {
 
   const { error } = await supabase
     .from("wakfubuilds")
-    .update({ level: parseInt(level), ...cleanEq })
+    .update({ level: parseInt(level), stats: stats || {}, ...cleanEq })
     .eq("id", buildId);
 
   if (error) throw error;
@@ -132,7 +132,7 @@ export async function updateBuild(buildId, level, equipment, socketsData) {
   const { error: delErr } = await supabase
     .from("wakfubuild_sockets")
     .delete()
-    .eq("build_id", buildId);
+    .eq("build", buildId);
 
   if (delErr) throw delErr;
 
@@ -141,7 +141,7 @@ export async function updateBuild(buildId, level, equipment, socketsData) {
     for (const slot of slots) {
       if (slot.level > 0) {
         socketInserts.push({
-          build_id: buildId,
+          build: buildId,
           equipment: eq,
           slot_index: slot.slot_index,
           level: slot.level,
