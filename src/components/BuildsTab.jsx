@@ -21,6 +21,7 @@ import {
   getStatIcon,
   aggregateItemStats,
   mergeItemAndCharStats,
+  ELEMENT_COLORS,
 } from "@/lib/itemStats";
 import {
   BRANCHES,
@@ -331,49 +332,156 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
       {buildStats.length > 0 && (
         <>
           <hr className="border-gray-700/20 my-1" />
-          <div className="space-y-0.5">
-            {buildStats.map((s, i) =>
-              s.type === "elemental_res" ? (
-                <div
-                  key={i}
-                  className="flex items-center gap-1 text-[10px] leading-tight"
-                >
-                  <img
-                    src={`${STAT_ICON_BASE}${s.singleElement ? ELEMENT_RES_ICON[s.elements[0].element] : "RES_IN_PERCENT"}.png`}
-                    alt=""
-                    className="size-3.5 shrink-0"
-                  />
-                  <span className="text-gray-400">
-                    {s.singleElement
-                      ? `${s.elements[0].value} Resistencia ${s.elements[0].element}`
-                      : `${s.elements[0].value} Resistencia`}
-                  </span>
-                  {!s.singleElement &&
-                    s.elements.map((e, j) => (
-                      <img
-                        key={j}
-                        src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[e.element]}.png`}
-                        alt=""
-                        className="size-3"
-                      />
-                    ))}
-                </div>
-              ) : (
-                <div
-                  key={i}
-                  className={`flex items-center gap-1 ${s.className} text-[10px] leading-tight`}
-                >
-                  {s.icon && (
-                    <img
-                      src={`${STAT_ICON_BASE}${s.icon}.png`}
-                      alt=""
-                      className="size-3.5 shrink-0"
-                    />
-                  )}
-                  <span>{s.label}</span>
-                </div>
-              ),
-            )}
+          <div className="grid grid-cols-4 gap-1.5 text-[10px]">
+            {(() => {
+              const coreActions = new Set([20, 31, 41, 191, 192]);
+              const masteryIds = new Set([122, 124, 123, 125]);
+              const resIds = new Set([82, 83, 84, 85]);
+              const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
+              const core = {};
+              const masteryByAction = {};
+              const resByElement = {};
+              let genericMastery = 0;
+              let genericRes = 0;
+              const combatByAction = {};
+              const otherRest = [];
+
+              for (const s of buildStats) {
+                if (coreActions.has(s.actionId)) {
+                  core[s.actionId] = s;
+                } else if (masteryIds.has(s.actionId)) {
+                  masteryByAction[s.actionId] = s;
+                } else if (s.actionId === 120) {
+                  genericMastery += s.value;
+                } else if (s.type === "elemental_res") {
+                  for (const e of s.elements) {
+                    resByElement[e.element] = e;
+                  }
+                } else if (resIds.has(s.actionId)) {
+                  resByElement[s.element] = s;
+                } else if (s.actionId === 80) {
+                  genericRes += s.value;
+                } else if (combatIds.has(s.actionId)) {
+                  combatByAction[s.actionId] = s;
+                } else {
+                  otherRest.push(s);
+                }
+              }
+
+              const cells = [];
+
+              const addCore = (actionId, label) => {
+                const s = core[actionId];
+                if (s) cells.push(
+                  <div key={`core-${actionId}`} className="flex items-center gap-0.5 leading-tight p-1 rounded bg-[#091e28]">
+                    <img src={`${STAT_ICON_BASE}${s.icon}.png`} alt="" className="size-3.5 shrink-0" />
+                    <span>{s.shortLabel || label} {s.value}</span>
+                  </div>
+                );
+              };
+              addCore(20, "PdV");
+              addCore(31, "PA");
+              addCore(41, "PM");
+              addCore(191, "PW");
+
+              const elemOrder = ["Fuego", "Agua", "Tierra", "Aire"];
+              const actionFor = (el) =>
+                el === "Fuego" ? 122 : el === "Agua" ? 124 : el === "Tierra" ? 123 : 125;
+              const masteries = elemOrder.map((el) => ({
+                el,
+                icon: getStatIcon(actionFor(el)),
+                value: (masteryByAction[actionFor(el)]?.value || 0) + genericMastery,
+                className: ELEMENT_COLORS[el],
+              }));
+              const resists = elemOrder.map((el) => {
+                const flat = (resByElement[el]?.value || 0) + genericRes;
+                const pct = Math.floor((1 - 0.8 ** (flat / 100)) * 100);
+                return { el, value: flat, pct };
+              });
+              const showDomRes = masteries.some((m) => m.value) || resists.some((r) => r.value);
+
+              if (showDomRes) {
+                cells.push(
+                  <div key="domres-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">
+                    Dominios y Resistencias
+                  </div>
+                );
+                masteries.forEach((m) => {
+                  cells.push(
+                    <div key={`dmg-${m.el}`} className="flex items-center gap-0.5 leading-tight p-1 rounded bg-[#091e28]">
+                      <img src={`${STAT_ICON_BASE}${m.icon}.png`} alt="" className="size-3.5 shrink-0" />
+                      <span className={m.className}>{m.value}</span>
+                    </div>
+                  );
+                });
+                resists.forEach((r) => {
+                  cells.push(
+                    <div key={`res-${r.el}`} className="flex items-center gap-0.5 leading-tight p-1 rounded bg-[#091e28]">
+                      <img src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[r.el]}.png`} alt="" className="size-3.5 shrink-0" />
+                      <span className={ELEMENT_COLORS[r.el]}>{r.pct}% ({r.value})</span>
+                    </div>
+                  );
+                });
+              }
+
+              const v = (id) => combatByAction[id]?.value;
+              const vp = (id) => { const val = v(id); return val ? `${val}%` : val; };
+              const clVal = (s) => s?.replace(" Daño Infligido", "")?.replace(" Curas Realizadas", "");
+              const combatLeft = [
+                { key: "dmgFinal", label: "Daños Finales", icon: "FINAL_DMG_IN_PERCENT", value: clVal(charEffects.dmgPercent?.value) },
+                { key: "crit", label: "Golpe Crítico", icon: getStatIcon(150), value: vp(150) },
+                { key: "init", label: "Iniciativa", icon: getStatIcon(171), value: v(171) },
+                { key: "dodge", label: "Esquiva", icon: getStatIcon(175), value: v(175) },
+                { key: "wisdom", label: "Sabiduría", icon: getStatIcon(166), value: v(166) },
+                { key: "will", label: "Voluntad", icon: getStatIcon(177), value: v(177) },
+              ];
+              const combatRight = [
+                { key: "healFinal", label: "Curas Finales", icon: "FINAL_HEAL_IN_PERCENT", value: clVal(charEffects.healPercent?.value) },
+                { key: "anticip", label: "Anticipación", icon: getStatIcon(875), value: vp(875) },
+                { key: "range", label: "Alcance", icon: getStatIcon(160), value: v(160) },
+                { key: "tackle", label: "Placaje", icon: getStatIcon(173), value: v(173) },
+                { key: "prosp", label: "Prospección", icon: getStatIcon(162), value: v(162) },
+              ];
+              const hasCombat = combatLeft.some((item) => item.value && item.value !== 0) || combatRight.some((item) => item.value && item.value !== 0);
+              if (hasCombat) {
+                cells.push(
+                  <div key="combat-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">Combate</div>
+                );
+                cells.push(
+                  <div key="combat-grid" className="col-span-4">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="flex flex-col gap-1.5">
+                        {combatLeft.map((item) => (
+                          <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                            {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-3.5 shrink-0" />}
+                            <span>{item.label} {item.value ?? 0}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {combatRight.map((item) => (
+                          <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                            {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-3.5 shrink-0" />}
+                            <span>{item.label} {item.value ?? 0}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              otherRest.forEach((s, i) => {
+                cells.push(
+                  <div key={`other-${i}`} className="col-span-4 flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                    {s.icon && <img src={`${STAT_ICON_BASE}${s.icon}.png`} alt="" className="size-3.5 shrink-0" />}
+                    <span>{s.label}</span>
+                  </div>
+                );
+              });
+
+              return cells;
+            })()}
           </div>
         </>
       )}
@@ -383,8 +491,6 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
           "curaPercent",
           "vidaArmadura",
           "armorGiven",
-          "dmgPercent",
-          "healPercent",
         ]);
         const nonMerge = Object.entries(charEffects).filter(
           ([k, v]) => v !== null && nonMergeKeys.has(k),
@@ -1204,86 +1310,168 @@ function BuildFormDrawer({
                   "curaPercent",
                   "vidaArmadura",
                   "armorGiven",
-                  "dmgPercent",
-                  "healPercent",
                 ]);
                 const nonMerge = Object.entries(charEffects).filter(
                   ([k, v]) => v !== null && nonMergeKeys.has(k),
                 );
-                const hasAny = merged.length > 0 || nonMerge.length > 0;
+                const coreActions = new Set([20, 31, 41, 191, 192]);
+                const masteryIds = new Set([122, 124, 123, 125]);
+                const resIds = new Set([82, 83, 84, 85]);
+                const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
+                const core = {};
+                const masteryByAction = {};
+                const resByElement = {};
+                let genericMastery = 0;
+                let genericRes = 0;
+                const combatByAction = {};
+                const otherRest = [];
+                for (const s of merged) {
+                  if (coreActions.has(s.actionId)) {
+                    core[s.actionId] = s;
+                  } else if (masteryIds.has(s.actionId)) {
+                    masteryByAction[s.actionId] = s;
+                  } else if (s.actionId === 120) {
+                    genericMastery += s.value;
+                  } else if (s.type === "elemental_res") {
+                    for (const e of s.elements) {
+                      resByElement[e.element] = e;
+                    }
+                  } else if (resIds.has(s.actionId)) {
+                    resByElement[s.element] = s;
+                  } else if (s.actionId === 80) {
+                    genericRes += s.value;
+                  } else if (combatIds.has(s.actionId)) {
+                    combatByAction[s.actionId] = s;
+                  } else {
+                    otherRest.push(s);
+                  }
+                }
+                const previewCells = [];
+                const addCore = (actionId, label) => {
+                  const s = core[actionId];
+                  if (s) previewCells.push(
+                    <div key={`core-${actionId}`} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                      <img src={`${STAT_ICON_BASE}${s.icon}.png`} alt="" className="size-4 shrink-0" />
+                      <span>{s.shortLabel || label} {s.value}</span>
+                    </div>
+                  );
+                };
+                addCore(20, "PdV");
+                addCore(31, "PA");
+                addCore(41, "PM");
+                addCore(191, "PW");
+                const elemOrder = ["Fuego", "Agua", "Tierra", "Aire"];
+                const actionFor = (el) =>
+                  el === "Fuego" ? 122 : el === "Agua" ? 124 : el === "Tierra" ? 123 : 125;
+                const masteries = elemOrder.map((el) => ({
+                  el,
+                  icon: getStatIcon(actionFor(el)),
+                  value: (masteryByAction[actionFor(el)]?.value || 0) + genericMastery,
+                  className: ELEMENT_COLORS[el],
+                }));
+                const resists = elemOrder.map((el) => {
+                  const flat = (resByElement[el]?.value || 0) + genericRes;
+                  const pct = Math.floor((1 - 0.8 ** (flat / 100)) * 100);
+                  return { el, value: flat, pct };
+                });
+                const showDomRes = masteries.some((m) => m.value) || resists.some((r) => r.value);
+                if (showDomRes) {
+                  previewCells.push(
+                    <div key="domres-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">Dominios y Resistencias</div>
+                  );
+                  masteries.forEach((m) => {
+                    previewCells.push(
+                      <div key={`dmg-${m.el}`} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                        <img src={`${STAT_ICON_BASE}${m.icon}.png`} alt="" className="size-4 shrink-0" />
+                        <span className={m.className}>{m.value}</span>
+                      </div>
+                    );
+                  });
+                  resists.forEach((r) => {
+                    previewCells.push(
+                      <div key={`res-${r.el}`} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                        <img src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[r.el]}.png`} alt="" className="size-4 shrink-0" />
+                        <span className={ELEMENT_COLORS[r.el]}>{r.pct}% ({r.value})</span>
+                      </div>
+                    );
+                  });
+                }
+                const v = (id) => combatByAction[id]?.value;
+                const vp = (id) => { const val = v(id); return val ? `${val}%` : val; };
+                const clVal = (s) => s?.replace(" Daño Infligido", "")?.replace(" Curas Realizadas", "");
+                const combatLeft = [
+                  { key: "dmgFinal", label: "Daños Finales", icon: "FINAL_DMG_IN_PERCENT", value: clVal(charEffects.dmgPercent?.value) },
+                  { key: "crit", label: "Golpe Crítico", icon: getStatIcon(150), value: vp(150) },
+                  { key: "init", label: "Iniciativa", icon: getStatIcon(171), value: v(171) },
+                  { key: "dodge", label: "Esquiva", icon: getStatIcon(175), value: v(175) },
+                  { key: "wisdom", label: "Sabiduría", icon: getStatIcon(166), value: v(166) },
+                  { key: "will", label: "Voluntad", icon: getStatIcon(177), value: v(177) },
+                ];
+                const combatRight = [
+                  { key: "healFinal", label: "Curas Finales", icon: "FINAL_HEAL_IN_PERCENT", value: clVal(charEffects.healPercent?.value) },
+                  { key: "anticip", label: "Anticipación", icon: getStatIcon(875), value: vp(875) },
+                  { key: "range", label: "Alcance", icon: getStatIcon(160), value: v(160) },
+                  { key: "tackle", label: "Placaje", icon: getStatIcon(173), value: v(173) },
+                  { key: "prosp", label: "Prospección", icon: getStatIcon(162), value: v(162) },
+                ];
+                const hasCombat = combatLeft.some((item) => item.value && item.value !== 0) || combatRight.some((item) => item.value && item.value !== 0);
+                if (hasCombat) {
+                  previewCells.push(
+                    <div key="combat-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">Combate</div>
+                  );
+                  previewCells.push(
+                    <div key="combat-grid" className="col-span-4">
+                      <div className="grid grid-cols-2 gap-1">
+                          <div className="flex flex-col gap-1">
+                            {combatLeft.map((item) => (
+                              <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                                {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-4 shrink-0" />}
+                                <span>{item.label} {item.value ?? 0}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {combatRight.map((item) => (
+                              <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                                {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-4 shrink-0" />}
+                                <span>{item.label} {item.value ?? 0}</span>
+                              </div>
+                            ))}
+                          </div>
+                      </div>
+                    </div>
+                  );
+                }
+                otherRest.forEach((s, i) => {
+                  previewCells.push(
+                    <div key={`other-${i}`} className="col-span-4 flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                      {s.icon && <img src={`${STAT_ICON_BASE}${s.icon}.png`} alt="" className="size-4 shrink-0" />}
+                      <span className={s.className || "text-gray-400"}>{s.label}</span>
+                    </div>
+                  );
+                });
+                nonMerge.forEach(([key, v]) => {
+                  const icon = CHAR_STAT_ICON[key];
+                  previewCells.push(
+                    <div key={key} className="col-span-4 flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28] text-gray-400">
+                      {icon && <img src={`${STAT_ICON_BASE}${icon}.png`} alt="" className="size-4 shrink-0" />}
+                      <span>{v.value}</span>
+                    </div>
+                  );
+                });
+                const hasAny = previewCells.length > 0;
                 return (
                   <>
                     <hr className="border-gray-700/40 my-2" />
                     <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
                       Vista previa de estadísticas
                     </h4>
-                    <div className="max-h-[220px] overflow-y-auto vertical-scroll space-y-0.5 text-xs">
-                      {merged.map((s, i) => (
-                        <div
-                          key={`merged-${i}`}
-                          className="flex items-center gap-1 leading-tight"
-                        >
-                          {s.type === "elemental_res" ? (
-                            <>
-                              <img
-                                src={`${STAT_ICON_BASE}${s.singleElement ? ELEMENT_RES_ICON[s.elements[0].element] : "RES_IN_PERCENT"}.png`}
-                                alt=""
-                                className="size-4 shrink-0"
-                              />
-                              <span className="text-gray-400">
-                                {s.singleElement
-                                  ? `${s.elements[0].value} Resistencia ${s.elements[0].element}`
-                                  : `${s.elements[0].value} Resistencia`}
-                              </span>
-                              {!s.singleElement &&
-                                s.elements.map((e, j) => (
-                                  <img
-                                    key={j}
-                                    src={`${STAT_ICON_BASE}${ELEMENT_RES_ICON[e.element]}.png`}
-                                    alt=""
-                                    className="size-3.5"
-                                  />
-                                ))}
-                            </>
-                          ) : (
-                            <>
-                              {s.icon && (
-                                <img
-                                  src={`${STAT_ICON_BASE}${s.icon}.png`}
-                                  alt=""
-                                  className="size-4 shrink-0"
-                                />
-                              )}
-                              <span className={s.className || "text-gray-400"}>
-                                {s.label}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                      {nonMerge.map(([key, v]) => {
-                        const icon = CHAR_STAT_ICON[key];
-                        return (
-                          <div
-                            key={key}
-                            className="flex items-center gap-1 leading-tight text-gray-400"
-                          >
-                            {icon && (
-                              <img
-                                src={`${STAT_ICON_BASE}${icon}.png`}
-                                alt=""
-                                className="size-4 shrink-0"
-                              />
-                            )}
-                            <span>{v.value}</span>
-                          </div>
-                        );
-                      })}
-                      {!hasAny && (
-                        <span className="text-gray-600 italic">
-                          Sin estadísticas
-                        </span>
-                      )}
+                    <div className="max-h-[220px] overflow-y-auto vertical-scroll">
+                      <div className="grid grid-cols-4 gap-1 text-xs">
+                        {previewCells.length > 0 ? previewCells : (
+                          <span className="col-span-4 text-gray-600 italic">Sin estadísticas</span>
+                        )}
+                      </div>
                     </div>
                   </>
                 );

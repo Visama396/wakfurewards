@@ -73,11 +73,34 @@ const ELEMENT_NAMES = {
   el4: "Aire",
 };
 
-const ELEMENT_COLORS = {
+export const ELEMENT_COLORS = {
   Fuego: "text-orange-400",
   Agua: "text-blue-400",
   Aire: "text-fuchsia-400",
   Tierra: "text-green-500",
+};
+
+export const ALL_ELEMENTS = ["Fuego", "Agua", "Tierra", "Aire"];
+
+const ELEMENT_TO_EL = {
+  Fuego: "el1",
+  Agua: "el2",
+  Tierra: "el3",
+  Aire: "el4",
+};
+
+const ELEMENT_TO_MASTERY_ID = {
+  Fuego: 122,
+  Agua: 124,
+  Tierra: 123,
+  Aire: 125,
+};
+
+const ELEMENT_TO_RESIST_ID = {
+  Fuego: 82,
+  Agua: 83,
+  Tierra: 84,
+  Aire: 85,
 };
 
 const ACTION_META = {
@@ -349,6 +372,11 @@ const CLASS_PASSIVES = {
 export function mergeItemAndCharStats(items, allocStats, level, className) {
   const byGroup = {};
 
+  const savedElements = allocStats?.elements;
+  const elementPriority = savedElements?.length
+    ? [...savedElements, ...ALL_ELEMENTS.filter((e) => !savedElements.includes(e))]
+    : ALL_ELEMENTS;
+
   for (const { definition, level } of items) {
     const effects = definition?.equipEffects;
     if (!effects) continue;
@@ -366,7 +394,18 @@ export function mergeItemAndCharStats(items, allocStats, level, className) {
         (canonicalId === 1068 || canonicalId === 1069) && params?.[2] > 0
           ? params[2]
           : 0;
-      groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
+      if (numElements > 0) {
+        const perElementMap =
+          canonicalId === 1068 ? ELEMENT_TO_MASTERY_ID : ELEMENT_TO_RESIST_ID;
+        const selected = elementPriority.slice(0, numElements);
+        for (const elName of selected) {
+          const perActionId = perElementMap[elName];
+          const el = ELEMENT_TO_EL[elName];
+          groupEntry(byGroup, perActionId, el, 0).value += finalValue;
+        }
+      } else {
+        groupEntry(byGroup, canonicalId, meta.el, numElements).value += finalValue;
+      }
     }
   }
 
