@@ -630,7 +630,7 @@ const SLOT_TYPE_IDS = {
   second_weapon: [101, 108, 110, 111, 113, 114, 115, 117, 223, 253, 254, 537],
   accessory: [646],
   mount: [611],
-  pet: [582],
+  pet: [582, 849],
   relic_sublimation: [812],
   epic_sublimation: [812],
 };
