@@ -22,6 +22,7 @@ import {
   aggregateItemStats,
   mergeItemAndCharStats,
   ELEMENT_COLORS,
+  ALL_ELEMENTS,
 } from "@/lib/itemStats";
 import {
   BRANCHES,
@@ -130,7 +131,7 @@ function ItemTooltip({ item }) {
           {item.stateName && (
             <>
               <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
-                {item.stateName}
+                {item.stateName}{item.stateLevel != null && <span className="text-fuchsia-400/60"> (+{item.stateLevel} niv.)</span>}
               </span>
               {item.stateDescription && (
                 <div
@@ -338,12 +339,14 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
               const masteryIds = new Set([122, 124, 123, 125]);
               const resIds = new Set([82, 83, 84, 85]);
               const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
+              const secondaryIds = new Set([26, 71, 149, 180, 181, 988, 1052, 1053, 1055, 1056, 1059, 1060, 1061, 1062, 1063]);
               const core = {};
               const masteryByAction = {};
               const resByElement = {};
               let genericMastery = 0;
               let genericRes = 0;
               const combatByAction = {};
+              const secondaryByAction = {};
               const otherRest = [];
 
               for (const s of buildStats) {
@@ -363,6 +366,8 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
                   genericRes += s.value;
                 } else if (combatIds.has(s.actionId)) {
                   combatByAction[s.actionId] = s;
+                } else if (secondaryIds.has(s.actionId)) {
+                  secondaryByAction[s.actionId] = s;
                 } else {
                   otherRest.push(s);
                 }
@@ -471,6 +476,52 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
                 );
               }
 
+              const sv = (...ids) => ids.reduce((sum, id) => sum + (secondaryByAction[id]?.value || 0), 0);
+              const secVal = (s) => s?.replace(" Armadura Dada", "").replace(" Vida en Armadura", "").replace(" Daño Indirecto, +40 Dominio Elemental", "");
+              const secondaryLeft = [
+                { key: "domCritico", label: "Dominio Crítico", icon: getStatIcon(149), value: sv(149, 1056) },
+                { key: "domEspalda", label: "Dominio Espalda", icon: getStatIcon(180), value: sv(180, 181) },
+                { key: "domMelee", label: "Dominio Melé", icon: getStatIcon(1052), value: sv(1052, 1059) },
+                { key: "domDistancia", label: "Dominio Distancia", icon: getStatIcon(1053), value: sv(1053, 1060) },
+                { key: "domCuras", label: "Dominio Curas", icon: getStatIcon(26), value: sv(26) },
+                { key: "domBerserker", label: "Dominio Berserker", icon: getStatIcon(1055), value: sv(1055, 1061) },
+              ];
+              const secondaryRight = [
+                { key: "resistCritica", label: "Resistencia Crítica", icon: getStatIcon(988), value: sv(988, 1062) },
+                { key: "resistEspalda", label: "Resistencia Espalda", icon: getStatIcon(71), value: sv(71, 1063) },
+                { key: "armorGiven", label: "Armadura Dada", icon: CHAR_STAT_ICON.armorGiven, value: secVal(charEffects.armorGiven?.value) },
+                { key: "vidaArmadura", label: "Armadura Recibida", icon: CHAR_STAT_ICON.vidaArmadura, value: secVal(charEffects.vidaArmadura?.value) },
+                { key: "indirectDmg", label: "Daños Indirectos", icon: "INDIRECT_DMG", value: secVal(charEffects.indirectDmg?.value) },
+              ];
+              const hasSecondary = secondaryLeft.some((item) => item.value && item.value !== 0) || secondaryRight.some((item) => item.value && item.value !== 0);
+              if (hasSecondary) {
+                cells.push(
+                  <div key="sec-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">Secundario</div>
+                );
+                cells.push(
+                  <div key="sec-grid" className="col-span-4">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="flex flex-col gap-1.5">
+                        {secondaryLeft.map((item) => (
+                          <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                            {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-3.5 shrink-0" />}
+                            <span>{item.label} {item.value ?? 0}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {secondaryRight.map((item) => (
+                          <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                            {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-3.5 shrink-0" />}
+                            <span>{item.label} {item.value ?? 0}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               otherRest.forEach((s, i) => {
                 cells.push(
                   <div key={`other-${i}`} className="col-span-4 flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
@@ -489,8 +540,6 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
         const nonMergeKeys = new Set([
           "barrera",
           "curaPercent",
-          "vidaArmadura",
-          "armorGiven",
         ]);
         const nonMerge = Object.entries(charEffects).filter(
           ([k, v]) => v !== null && nonMergeKeys.has(k),
@@ -801,6 +850,24 @@ function BuildFormDrawer({
     () => computeEffectiveStats(allocStats, parseInt(level) || 1),
     [allocStats, level],
   );
+
+  const elementOrder = useMemo(
+    () =>
+      allocStats.elements?.length === 4
+        ? allocStats.elements
+        : [...ALL_ELEMENTS],
+    [allocStats.elements],
+  );
+
+  function handleReorderElements(fromIdx, toIdx) {
+    if (fromIdx === toIdx) return;
+    setAllocStats((prev) => {
+      const order = prev.elements?.length === 4 ? [...prev.elements] : [...ALL_ELEMENTS];
+      const [moved] = order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, moved);
+      return { ...prev, elements: order };
+    });
+  }
 
   useEffect(() => {
     setAllocStats((prev) => {
@@ -1197,7 +1264,7 @@ function BuildFormDrawer({
                             </div>
                             {item.stateName && (
                               <span className="text-[10px] text-fuchsia-400/80 mt-0.5 block">
-                                {item.stateName}
+                                {item.stateName}{item.stateLevel != null && <span className="text-fuchsia-400/60"> (+{item.stateLevel} niv.)</span>}
                               </span>
                             )}
                             {item.stateDescription && (
@@ -1308,8 +1375,6 @@ function BuildFormDrawer({
                 const nonMergeKeys = new Set([
                   "barrera",
                   "curaPercent",
-                  "vidaArmadura",
-                  "armorGiven",
                 ]);
                 const nonMerge = Object.entries(charEffects).filter(
                   ([k, v]) => v !== null && nonMergeKeys.has(k),
@@ -1318,12 +1383,14 @@ function BuildFormDrawer({
                 const masteryIds = new Set([122, 124, 123, 125]);
                 const resIds = new Set([82, 83, 84, 85]);
                 const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
+                const secondaryIds = new Set([26, 71, 149, 180, 181, 988, 1052, 1053, 1055, 1056, 1059, 1060, 1061, 1062, 1063]);
                 const core = {};
                 const masteryByAction = {};
                 const resByElement = {};
                 let genericMastery = 0;
                 let genericRes = 0;
                 const combatByAction = {};
+                const secondaryByAction = {};
                 const otherRest = [];
                 for (const s of merged) {
                   if (coreActions.has(s.actionId)) {
@@ -1342,6 +1409,8 @@ function BuildFormDrawer({
                     genericRes += s.value;
                   } else if (combatIds.has(s.actionId)) {
                     combatByAction[s.actionId] = s;
+                  } else if (secondaryIds.has(s.actionId)) {
+                    secondaryByAction[s.actionId] = s;
                   } else {
                     otherRest.push(s);
                   }
@@ -1442,6 +1511,51 @@ function BuildFormDrawer({
                     </div>
                   );
                 }
+                const sv2 = (...ids) => ids.reduce((sum, id) => sum + (secondaryByAction[id]?.value || 0), 0);
+                const secVal2 = (s) => s?.replace(" Armadura Dada", "").replace(" Vida en Armadura", "").replace(" Daño Indirecto, +40 Dominio Elemental", "");
+                const secondaryLeft = [
+                  { key: "domCritico", label: "Dominio Crítico", icon: getStatIcon(149), value: sv2(149, 1056) },
+                  { key: "domEspalda", label: "Dominio Espalda", icon: getStatIcon(180), value: sv2(180, 181) },
+                  { key: "domMelee", label: "Dominio Melé", icon: getStatIcon(1052), value: sv2(1052, 1059) },
+                  { key: "domDistancia", label: "Dominio Distancia", icon: getStatIcon(1053), value: sv2(1053, 1060) },
+                  { key: "domCuras", label: "Dominio Curas", icon: getStatIcon(26), value: sv2(26) },
+                  { key: "domBerserker", label: "Dominio Berserker", icon: getStatIcon(1055), value: sv2(1055, 1061) },
+                ];
+                const secondaryRight = [
+                  { key: "resistCritica", label: "Resistencia Crítica", icon: getStatIcon(988), value: sv2(988, 1062) },
+                  { key: "resistEspalda", label: "Resistencia Espalda", icon: getStatIcon(71), value: sv2(71, 1063) },
+                  { key: "armorGiven", label: "Armadura Dada", icon: CHAR_STAT_ICON.armorGiven, value: secVal2(charEffects.armorGiven?.value) },
+                  { key: "vidaArmadura", label: "Armadura Recibida", icon: CHAR_STAT_ICON.vidaArmadura, value: secVal2(charEffects.vidaArmadura?.value) },
+                  { key: "indirectDmg", label: "Daños Indirectos", icon: "INDIRECT_DMG", value: secVal2(charEffects.indirectDmg?.value) },
+                ];
+                const hasSecondary = secondaryLeft.some((item) => item.value && item.value !== 0) || secondaryRight.some((item) => item.value && item.value !== 0);
+                if (hasSecondary) {
+                  previewCells.push(
+                    <div key="sec-head" className="col-span-4 text-[10px] text-gray-500 text-center font-semibold tracking-wide">Secundario</div>
+                  );
+                  previewCells.push(
+                    <div key="sec-grid" className="col-span-4">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="flex flex-col gap-1.5">
+                          {secondaryLeft.map((item) => (
+                            <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                              {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-4 shrink-0" />}
+                              <span>{item.label} {item.value ?? 0}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          {secondaryRight.map((item) => (
+                            <div key={item.key} className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                              {item.icon && <img src={`${STAT_ICON_BASE}${item.icon}.png`} alt="" className="size-4 shrink-0" />}
+                              <span>{item.label} {item.value ?? 0}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 otherRest.forEach((s, i) => {
                   previewCells.push(
                     <div key={`other-${i}`} className="col-span-4 flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
@@ -1496,6 +1610,39 @@ function BuildFormDrawer({
                     {b.label}
                   </button>
                 ))}
+              </div>
+              <div className="mb-2">
+                <label className="text-[10px] text-gray-500 block mb-1">Prioridad de Elementos</label>
+                <div className="flex gap-1">
+                  {elementOrder.map((el, i) => (
+                    <div
+                      key={el}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", i.toString());
+                        e.currentTarget.classList.add("opacity-40");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add("ring-1", "ring-orange-400");
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                        handleReorderElements(parseInt(e.dataTransfer.getData("text/plain")), i);
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.classList.remove("opacity-40", "ring-1", "ring-orange-400");
+                      }}
+                      className={`flex-1 text-center px-1 py-1 rounded cursor-grab active:cursor-grabbing text-[10px] font-medium ${ELEMENT_COLORS[el]} bg-[#091e28] border border-transparent transition-all`}
+                    >
+                      {el}
+                    </div>
+                  ))}
+                </div>
               </div>
               {(() => {
                 const curBranch = BRANCHES.find(

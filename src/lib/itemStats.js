@@ -482,12 +482,19 @@ function getItemStateData(item) {
     (ee) => ee.effect?.definition?.actionId === 304
   );
   if (!stateEffect) return null;
-  const stateId = stateEffect.effect.definition.params[0];
+  const params = stateEffect.effect.definition.params;
+  const stateId = params[0];
+  const stateLevel = params[2] || 0;
   const state = statesData.find((s) => s.definition.id === stateId);
   if (!state) return null;
+  let description = state?.description?.es || state?.description?.en || null;
+  if (description && stateLevel) {
+    description = description.replace(/\{value\}/g, (stateLevel * 0.01).toFixed(2));
+  }
   return {
     name: state?.title?.es || state?.title?.en || null,
-    description: state?.description?.es || null,
+    description,
+    stateLevel,
   };
 }
 
@@ -506,6 +513,7 @@ export function extractItemInfo(item) {
     rarity: item.definition.item.baseParameters.rarity,
     stateName: stateData?.name || null,
     stateDescription: stateData?.description || null,
+    stateLevel: stateData?.stateLevel || null,
     sublimationParams,
     definition: item.definition,
   };
