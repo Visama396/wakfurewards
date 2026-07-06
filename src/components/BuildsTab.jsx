@@ -662,6 +662,7 @@ function BuildFormDrawer({
   const [filterLevel, setFilterLevel] = useState(200);
   const [filterRarities, setFilterRarities] = useState(new Set(RARITY_FILTER));
   const [filterStats, setFilterStats] = useState(new Set());
+  const [drawerTab, setDrawerTab] = useState("equipamiento");
 
   useEffect(() => {
     if (!build) return;
@@ -1102,6 +1103,28 @@ function BuildFormDrawer({
             })}
           </div>
 
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            {[
+              { key: "equipamiento", label: "Equipamiento" },
+              { key: "sublimar", label: "Sublimar" },
+              { key: "ficha", label: "Ficha de Personaje" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setDrawerTab(tab.key)}
+                className={`text-xs px-3 py-1 rounded cursor-pointer font-medium transition-colors ${
+                  drawerTab === tab.key
+                    ? "bg-orange-400/20 text-orange-300 ring-1 ring-orange-400"
+                    : "bg-[#163544] text-gray-400 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {drawerTab === "equipamiento" && (
+            <>
           <div className="flex items-center gap-4 shrink-0 flex-wrap">
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-400">Nivel filtro:</label>
@@ -1347,9 +1370,118 @@ function BuildFormDrawer({
                 )}
             </div>
           )}
+          </>
+          )}
+          {drawerTab === "sublimar" && (
+            <div className="flex items-center justify-center flex-1 min-h-0 text-gray-500">
+              <p className="text-lg">Sublimación — Próximamente</p>
+            </div>
+          )}
+          {drawerTab === "ficha" && (
+            <div>
+              <hr className="border-gray-700/40 my-2" />
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                Características de Personaje
+              </h4>
+              <div className="flex gap-1 mb-2 flex-wrap">
+                {BRANCHES.map((b) => (
+                  <button
+                    key={b.key}
+                    onClick={() => setSelectedBranch(b.key)}
+                    className={`text-[10px] px-2 py-0.5 rounded cursor-pointer font-medium transition-colors ${
+                      selectedBranch === b.key
+                        ? "bg-orange-400/20 text-orange-300 ring-1 ring-orange-400"
+                        : "bg-[#163544] text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mb-2">
+                <label className="text-[10px] text-gray-500 block mb-1">Prioridad de Elementos</label>
+                <div className="flex gap-1">
+                  {elementOrder.map((el, i) => (
+                    <div
+                      key={el}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", i.toString());
+                        e.currentTarget.classList.add("opacity-40");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add("ring-1", "ring-orange-400");
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                        handleReorderElements(parseInt(e.dataTransfer.getData("text/plain")), i);
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.classList.remove("opacity-40", "ring-1", "ring-orange-400");
+                      }}
+                      className={`flex-1 text-center px-1 py-1 rounded cursor-grab active:cursor-grabbing text-[10px] font-medium ${ELEMENT_COLORS[el]} bg-[#091e28] border border-transparent transition-all`}
+                    >
+                      {el}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {(() => {
+                const curBranch = BRANCHES.find((b) => b.key === selectedBranch);
+                const totalPts = branchPoints[curBranch?.key] || 0;
+                const spentPts = curBranch ? curBranch.stats.reduce((s, st) => s + (allocStats[st.key] || 0), 0) : 0;
+                const remainingPts = totalPts - spentPts;
+                return (
+                  <div className="text-[10px] text-gray-500 mb-1">
+                    Puntos disponibles:{" "}
+                    <span className={`font-semibold tabular-nums ${remainingPts > 0 ? "text-orange-300" : "text-gray-600"}`}>
+                      {remainingPts}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div className="space-y-1">
+                {BRANCHES.find((b) => b.key === selectedBranch)?.stats.map((s) => {
+                  const val = allocStats[s.key] || 0;
+                  const atCap = s.cap !== null && val >= s.cap;
+                  const curBranch = BRANCHES.find((b) => b.key === selectedBranch);
+                  const totalPts = branchPoints[curBranch?.key] || 0;
+                  const spentPts = curBranch ? curBranch.stats.reduce((s, st) => s + (allocStats[st.key] || 0), 0) : 0;
+                  const noBranchPts = spentPts >= totalPts;
+                  const remainingPts = totalPts - spentPts;
+                  const effective = effectiveStats[s.key];
+                  return (
+                    <div key={s.key}>
+                      <div className="flex items-center justify-between text-xs gap-4">
+                        <span className="text-gray-300">{s.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => setAllocStats((prev) => ({...prev, [s.key]: Math.max(0, (prev[s.key] || 0) - (e.shiftKey ? 10 : 1))}))}
+                            disabled={val <= 0}
+                            className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
+                          >−</button>
+                          <span className="w-6 text-center text-gray-200 tabular-nums">{val}</span>
+                          <button
+                            onClick={(e) => setAllocStats((prev) => ({...prev, [s.key]: Math.min(s.cap ?? Infinity, (prev[s.key] || 0) + (e.shiftKey ? Math.min(10, remainingPts) : 1))}))}
+                            disabled={atCap || noBranchPts}
+                            className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
+                          >+</button>
+                          <span className="text-gray-600 text-[10px] w-8 text-right shrink-0">{s.cap !== null ? `/${s.cap}` : ""}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          <div className="flex gap-4 shrink-0">
-            <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
               {(() => {
                 const equippedItems = EQUIPMENT_SLOTS.filter(
                   (s) => equipment[s.key],
@@ -1588,153 +1720,6 @@ function BuildFormDrawer({
                   </>
                 );
               })()}
-            </div>
-            <div>
-              <hr className="border-gray-700/40 my-2" />
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Características de Personaje
-              </h4>
-              <div className="flex gap-1 mb-2 flex-wrap">
-                {BRANCHES.map((b) => (
-                  <button
-                    key={b.key}
-                    onClick={() => setSelectedBranch(b.key)}
-                    className={`text-[10px] px-2 py-0.5 rounded cursor-pointer font-medium transition-colors ${
-                      selectedBranch === b.key
-                        ? "bg-orange-400/20 text-orange-300 ring-1 ring-orange-400"
-                        : "bg-[#163544] text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-              <div className="mb-2">
-                <label className="text-[10px] text-gray-500 block mb-1">Prioridad de Elementos</label>
-                <div className="flex gap-1">
-                  {elementOrder.map((el, i) => (
-                    <div
-                      key={el}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", i.toString());
-                        e.currentTarget.classList.add("opacity-40");
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.add("ring-1", "ring-orange-400");
-                      }}
-                      onDragLeave={(e) => {
-                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
-                        handleReorderElements(parseInt(e.dataTransfer.getData("text/plain")), i);
-                      }}
-                      onDragEnd={(e) => {
-                        e.currentTarget.classList.remove("opacity-40", "ring-1", "ring-orange-400");
-                      }}
-                      className={`flex-1 text-center px-1 py-1 rounded cursor-grab active:cursor-grabbing text-[10px] font-medium ${ELEMENT_COLORS[el]} bg-[#091e28] border border-transparent transition-all`}
-                    >
-                      {el}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {(() => {
-                const curBranch = BRANCHES.find(
-                  (b) => b.key === selectedBranch,
-                );
-                const totalPts = branchPoints[curBranch?.key] || 0;
-                const spentPts = curBranch
-                  ? curBranch.stats.reduce(
-                      (s, st) => s + (allocStats[st.key] || 0),
-                      0,
-                    )
-                  : 0;
-                const remainingPts = totalPts - spentPts;
-                return (
-                  <div className="text-[10px] text-gray-500 mb-1">
-                    Puntos disponibles:{" "}
-                    <span
-                      className={`font-semibold tabular-nums ${remainingPts > 0 ? "text-orange-300" : "text-gray-600"}`}
-                    >
-                      {remainingPts}
-                    </span>
-                  </div>
-                );
-              })()}
-              <div className="space-y-1">
-                {BRANCHES.find((b) => b.key === selectedBranch)?.stats.map(
-                  (s) => {
-                    const val = allocStats[s.key] || 0;
-                    const atCap = s.cap !== null && val >= s.cap;
-                    const curBranch = BRANCHES.find(
-                      (b) => b.key === selectedBranch,
-                    );
-                    const totalPts = branchPoints[curBranch?.key] || 0;
-                    const spentPts = curBranch
-                      ? curBranch.stats.reduce(
-                          (s, st) => s + (allocStats[st.key] || 0),
-                          0,
-                        )
-                      : 0;
-                    const noBranchPts = spentPts >= totalPts;
-                    const remainingPts = totalPts - spentPts;
-                    const effective = effectiveStats[s.key];
-                    return (
-                      <div key={s.key}>
-                        <div className="flex items-center justify-between text-xs gap-4">
-                          <span className="text-gray-300">{s.label}</span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={(e) =>
-                                setAllocStats((prev) => ({
-                                  ...prev,
-                                  [s.key]: Math.max(
-                                    0,
-                                    (prev[s.key] || 0) - (e.shiftKey ? 10 : 1),
-                                  ),
-                                }))
-                              }
-                              disabled={val <= 0}
-                              className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
-                            >
-                              −
-                            </button>
-                            <span className="w-6 text-center text-gray-200 tabular-nums">
-                              {val}
-                            </span>
-                            <button
-                              onClick={(e) =>
-                                setAllocStats((prev) => ({
-                                  ...prev,
-                                  [s.key]: Math.min(
-                                    s.cap ?? Infinity,
-                                    (prev[s.key] || 0) +
-                                      (e.shiftKey
-                                        ? Math.min(10, remainingPts)
-                                        : 1),
-                                  ),
-                                }))
-                              }
-                              disabled={atCap || noBranchPts}
-                              className="size-5 flex items-center justify-center rounded bg-[#163544] text-gray-400 hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-default leading-none text-sm"
-                            >
-                              +
-                            </button>
-                            <span className="text-gray-600 text-[10px] w-8 text-right shrink-0">
-                              {s.cap !== null ? `/${s.cap}` : ""}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="flex justify-end pt-2 shrink-0">

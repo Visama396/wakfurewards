@@ -9,6 +9,7 @@ import DailiesButton from "@/components/DailiesButton";
 import RecompensasTab from "@/components/RecompensasTab";
 import BuildsTab from "@/components/BuildsTab";
 import GuiasTab from "@/components/GuiasTab";
+import EnciclopediaTab from "@/components/EnciclopediaTab";
 import CompraTab from "@/components/CompraTab";
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
               <TabsTrigger value="recompensas">Recompensas</TabsTrigger>
               <TabsTrigger value="builds">Builds</TabsTrigger>
               <TabsTrigger value="guias">Guías</TabsTrigger>
+              <TabsTrigger value="enciclopedia">Enciclopedia</TabsTrigger>
               <TabsTrigger value="compra">Compra</TabsTrigger>
             </TabsList>
           </div>
@@ -121,6 +123,12 @@ export default function App() {
                   Guías
                 </TabsTrigger>
                 <TabsTrigger
+                  value="enciclopedia"
+                  className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
+                >
+                  Enciclopedia
+                </TabsTrigger>
+                <TabsTrigger
                   value="compra"
                   className="justify-start px-2 py-2 data-[state=active]:bg-[#163544]"
                 >
@@ -163,6 +171,10 @@ export default function App() {
 
       <TabsContent value="guias" className={tabContentClass}>
         <GuiasTab />
+      </TabsContent>
+
+      <TabsContent value="enciclopedia" className={tabContentClass}>
+        <EnciclopediaTab />
       </TabsContent>
 
       <TabsContent value="compra" className={tabContentClass}>
