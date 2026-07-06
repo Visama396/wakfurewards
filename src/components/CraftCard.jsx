@@ -1,15 +1,17 @@
 import { Star, Trash2 } from "lucide-react";
+import { ITEM_ICON_BASE } from "@/lib/icons";
 import TooltipCell from "@/components/TooltipCell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import itemsLocal from "../data/items.json";
+
+/** Card displaying a single craft order with materials and priority toggle */
 export default function CraftCard({ item, onTogglePriority, onDelete }) {
-  const ITEM_ICON_BASE =
-    "https://raw.githubusercontent.com/Vertylo/wakassets/main/items/";
   const localItemInfo = itemsLocal.find(
     (it) => (it.definition?.item?.id || it.id) === item.itemId,
   );
   const mainGfxId =
     localItemInfo?.definition?.item?.graphicParameters?.gfxId || item.itemId;
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="bg-[#163544] rounded-lg p-3 border border-gray-700/40 flex flex-col justify-between gap-3 relative group text-white">
@@ -61,9 +63,7 @@ export default function CraftCard({ item, onTogglePriority, onDelete }) {
             </button>
             <button
               onClick={() => {
-                if (
-                  window.confirm(`¿Quieres eliminar el pedido de ${item.name}?`)
-                )
+                if (window.confirm(`¿Quieres eliminar el pedido de ${item.name}?`))
                   onDelete(item.id);
               }}
               className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-950/20 transition-all cursor-pointer"
@@ -74,7 +74,6 @@ export default function CraftCard({ item, onTogglePriority, onDelete }) {
         </div>
         <div className="bg-[#1e4456]/40 border border-gray-700/30 rounded p-1.5 flex items-center gap-2 overflow-x-auto horizontal-scroll min-h-[36px]">
           {(item.materials || []).map((mat, idx) => {
-            const mId = mat.material_item_id;
             const totalMaterialPedido = mat.qty_needed * (item.quantity || 1);
             return (
               <TooltipCell
@@ -95,7 +94,7 @@ export default function CraftCard({ item, onTogglePriority, onDelete }) {
               >
                 <div className="flex items-center gap-1 shrink-0 bg-[#0d2733]/70 px-1.5 py-0.5 rounded border border-gray-700/30 cursor-default select-none">
                   <img
-                    src={`${ITEM_ICON_BASE}${mId}.png`}
+                    src={`${ITEM_ICON_BASE}${mat.material_item_id}.png`}
                     alt=""
                     className="size-5 object-contain"
                     loading="lazy"

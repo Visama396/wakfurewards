@@ -46,7 +46,7 @@ export default function CharacterCard({
   const [selectedDung, setSelectedDung] = useState(null);
   const [selectedStasis, setSelectedStasis] = useState(1);
 
-  /** Añade recompensa con la mazmorra y estasis seleccionados */
+  /** Adds the selected dungeon and stasis as a reward for this character */
   function handleSubmit() {
     if (!selectedDung) return;
     onAddReward(selectedDung.id, character.id, selectedStasis);

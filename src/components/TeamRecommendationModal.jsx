@@ -47,14 +47,14 @@ export default function TeamRecommendationModal({
   const [recommendedStasis, setRecommendedStasis] = useState(1);
   const [customStasis, setCustomStasis] = useState(1);
 
-  /** Actualiza un slot manual con un personaje */
+  /** Updates a manual slot with a character selection */
   function handleSlotChange(index, character) {
     const newSlots = [...slots];
     newSlots[index] = character;
     setSlots(newSlots);
   }
 
-  /** Filtra personajes no seleccionados en otros slots (evita duplicados en el combobox) */
+  /** Returns characters not already selected in other manual slots */
   function getAvailableChars(slotIndex) {
     const selectedIds = new Set(
       slots
@@ -65,13 +65,13 @@ export default function TeamRecommendationModal({
     return incompleteChars.filter((c) => !selectedIds.has(c.id));
   }
 
-  /** Añade el equipo recomendado completo como recompensa */
+  /** Adds the recommended team as rewards for the dungeon */
   function handleAddRecommendedTeam() {
     onAddTeam(dungeon.id, bestTeam, recommendedStasis);
     onClose();
   }
 
-  /** Auto-completa slots vacíos con personajes del equipo recomendado */
+  /** Fills empty manual slots with characters from the recommended team */
   function handleFill() {
     setSlots((prev) => {
       const usedIds = new Set(prev.filter(Boolean).map((c) => c.id));
@@ -80,7 +80,7 @@ export default function TeamRecommendationModal({
     });
   }
 
-  /** Añade el equipo personalizado (rellena huecos con recomendados si es necesario) */
+  /** Adds the custom team, filling gaps with recommended characters if needed */
   function handleAddCustomTeam() {
     const selectedIds = new Set(slots.filter(Boolean).map((c) => c.id));
     const filledSlots = slots.map((slot) => {
@@ -100,7 +100,7 @@ export default function TeamRecommendationModal({
     onClose();
   }
 
-  /** Excluye al equipo actual y pide una nueva recomendación */
+  /** Excludes the current team and requests a new recommendation */
   function handleRerolear() {
     const teams = result.teams;
     if (!teams || teams.length === 0) return;
@@ -110,7 +110,7 @@ export default function TeamRecommendationModal({
     onRerolear(currentTeam.map((c) => c.id));
   }
 
-  /** Vuelca el equipo recomendado en los slots de edición manual */
+  /** Moves the recommended team into the manual edit slots */
   function handleMoverAbajo() {
     setSlots(bestTeam.slice(0, teamSize));
   }

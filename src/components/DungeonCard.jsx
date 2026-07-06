@@ -60,7 +60,7 @@ export default function DungeonCard({
 
   const isDaily = highlightedDungeonNames.has(dungeon.name);
   const isModulox = moduloxDungeonNames.has(dungeon.name);
-  /** Gradiente de fondo según tipo de rotación */
+  /** Background gradient based on rotation type */
   const variantClass =
     isDaily && isModulox
       ? "bg-gradient-to-br from-yellow-500/15 to-sky-500/15 ring-1 ring-inset ring-purple-400/40"
@@ -75,7 +75,7 @@ export default function DungeonCard({
     (c) => !completedCharIds.has(c.id) && c.charrole !== "Padre Ausente",
   );
 
-  /** Añade el personaje seleccionado al popover como recompensa */
+  /** Adds the selected character as a reward for this dungeon */
   function handleSubmit() {
     if (!selectedChar) return;
     onAdd(dungeon.id, selectedChar.id, selectedStasis);
@@ -84,7 +84,7 @@ export default function DungeonCard({
     setSelectedStasis(1);
   }
 
-  /** Abre el modal de recomendación de equipo */
+  /** Opens the team recommendation modal, optionally preset for a specific character */
   function handleRecommend(char) {
     setPresetChar(char || null);
     const result = recommendTeam(dungeon.name, incompleteChars);
@@ -93,7 +93,7 @@ export default function DungeonCard({
     setShowRecommender(true);
   }
 
-  /** Excluye los miembros del equipo actual y busca alternativas */
+  /** Excludes the current team members and re-rolls alternative recommendations */
   function handleRerolear(teamCharIds) {
     const newExcluded = new Set(rerolearExcludedIds);
     teamCharIds.forEach((id) => newExcluded.add(id));

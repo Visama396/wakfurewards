@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { X, RefreshCw } from "lucide-react";
+import { ITEM_ICON_BASE } from "@/lib/icons";
 import {
   Combobox,
   ComboboxInput,
@@ -12,14 +13,18 @@ import itemsLocal from "../data/items.json";
 import recipeResults from "../data/recipeResults.json";
 import recipes from "../data/recipes.json";
 import recipeIngredients from "../data/recipeIngredients.json";
+
+/** Strips accents from a string for fuzzy searching */
+function eliminarAcentos(str) {
+  return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+}
+
+/** Modal form for adding a new craft order with catalog search and auto-fetched recipe */
 export default function AddOrderModal({ show, onClose, onSubmit }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const ITEM_ICON_BASE =
-    "https://raw.githubusercontent.com/Vertylo/wakassets/main/items/";
-  const eliminarAcentos = (str) =>
-    str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+
   const filteredItems = useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) return [];
     const queryLimpia = eliminarAcentos(searchQuery.toLowerCase());
@@ -30,19 +35,25 @@ export default function AddOrderModal({ show, onClose, onSubmit }) {
       })
       .slice(0, 30);
   }, [searchQuery]);
+
   if (!show) return null;
+
   const previewGfxId =
     selectedItem?.definition?.item?.graphicParameters?.gfxId || 0;
   const previewLevel = selectedItem?.definition?.item?.level || 0;
   const previewName = selectedItem?.title?.es || selectedItem?.title?.fr || "";
+
+  /** Submits the form: looks up recipe ingredients and inserts the order */
   function handleFormSubmit(e) {
     e.preventDefault();
     if (!selectedItem) return;
+
     const targetItemId = selectedItem.definition?.item?.id || selectedItem.id;
     const relacionResultado = recipeResults.find(
       (r) => r.productedItemId === targetItemId,
     );
     let materialesCalculados = [];
+
     if (relacionResultado) {
       const recipeId = relacionResultado.recipeId;
       const recetaBase = recipes.find((r) => r.id === recipeId);
@@ -66,6 +77,7 @@ export default function AddOrderModal({ show, onClose, onSubmit }) {
           });
       }
     }
+
     if (materialesCalculados.length === 0) {
       materialesCalculados = [
         {
@@ -77,6 +89,7 @@ export default function AddOrderModal({ show, onClose, onSubmit }) {
         },
       ];
     }
+
     onSubmit({
       itemId: targetItemId,
       name: previewName,
@@ -91,6 +104,7 @@ export default function AddOrderModal({ show, onClose, onSubmit }) {
     setSearchQuery("");
     onClose();
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-[#0d2733] border border-gray-700/60 w-[40vw] min-w-[450px] max-w-[90vw] rounded-xl shadow-2xl flex flex-col overflow-hidden text-white transition-all duration-200">
@@ -115,8 +129,7 @@ export default function AddOrderModal({ show, onClose, onSubmit }) {
               value={selectedItem}
               onValueChange={(item) => {
                 setSelectedItem(item);
-                if (item)
-                  setSearchQuery(item.title?.es || item.title?.fr || "");
+                if (item) setSearchQuery(item.title?.es || item.title?.fr || "");
               }}
               itemToStringLabel={(item) =>
                 `${item?.title?.es || item?.title?.fr} (nv. ${item?.definition?.item?.level || 0})`

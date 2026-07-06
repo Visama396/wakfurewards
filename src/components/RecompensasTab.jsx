@@ -50,6 +50,7 @@ export default function RecompensasTab({
   const [pickerDungeon, setPickerDungeon] = useState(null);
   const [pickerStasis, setPickerStasis] = useState(1);
 
+  /** Loads all data from Supabase (characters, dungeons, rewards) on mount */
   useEffect(() => {
     loadData();
     const channel = supabase
@@ -65,6 +66,7 @@ export default function RecompensasTab({
     };
   }, []);
 
+  /** Fetches characters, dungeons, and rewards in parallel */
   async function loadData() {
     const [chars, dungs, rwds] = await Promise.all([
       db.fetchCharacters(),
@@ -131,6 +133,7 @@ export default function RecompensasTab({
 
   const totalStasis = rewards.reduce((s, r) => s + r.stasis, 0);
 
+  /** Returns characters who haven't completed this dungeon yet */
   function getAvailableChars(dungeonId) {
     const completedCharIds = new Set(
       (dungRewardMap[dungeonId] || []).map((r) => r.char),
@@ -140,6 +143,7 @@ export default function RecompensasTab({
     );
   }
 
+  /** Opens the builder/team recommendation drawer for a dungeon */
   function handleOpenBuilder(dungeonId, presetChar) {
     setBuilderDungeonId(dungeonId);
     setBuilderPresetChar(presetChar);
@@ -152,6 +156,7 @@ export default function RecompensasTab({
     setBuilderRerolearExcludedIds(new Set());
   }
 
+  /** Re-rolls recommendations excluding the specified team member IDs */
   function handleBuilderRerolear(teamCharIds) {
     const newExcluded = new Set(builderRerolearExcludedIds);
     teamCharIds.forEach((id) => newExcluded.add(id));
@@ -164,6 +169,7 @@ export default function RecompensasTab({
     setBuilderResult(result);
   }
 
+  /** Deletes a single reward entry */
   async function deleteReward(id) {
     const reward = rewards.find((r) => r.id === id);
     const char = reward ? charMap[reward.char] : null;
@@ -178,6 +184,7 @@ export default function RecompensasTab({
     }
   }
 
+  /** Adds a single character reward to a dungeon */
   async function addDungeonReward(dungId, charId, stasis) {
     try {
       await db.addDungeonReward(dungId, charId, stasis);
@@ -194,6 +201,7 @@ export default function RecompensasTab({
     }
   }
 
+  /** Adds a full team as rewards to a dungeon */
   async function addDungeonTeamReward(dungId, teamMembers, stasis) {
     if (!teamMembers || teamMembers.length === 0) {
       toast.error("No hay personajes para añadir");
@@ -209,6 +217,7 @@ export default function RecompensasTab({
     }
   }
 
+  /** Updates the stasis value for a reward entry */
   async function updateStasis(id, val) {
     try {
       await db.updateStasis(id, val);
@@ -218,6 +227,7 @@ export default function RecompensasTab({
     }
   }
 
+  /** Toggles a character between active and Padre Ausente, preserving their subroles */
   async function togglePadreAusente(character) {
     let nuevoRol;
     let nuevosSubroles = [...(character.charsubroles || [])];
@@ -266,6 +276,7 @@ export default function RecompensasTab({
     }
   }
 
+  /** Horizontal scroll via mouse wheel for the dungeon list */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -280,6 +291,7 @@ export default function RecompensasTab({
     return () => el.removeEventListener("wheel", onWheel);
   });
 
+  /** Handles drag-over on the dungeon list to determine insertion index */
   function handleListDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -311,6 +323,7 @@ export default function RecompensasTab({
     setDragCharId(null);
   }
 
+  /** Handles drop onto the list: opens the dungeon picker overlay */
   function handleListDrop(e) {
     e.preventDefault();
     const charId = parseInt(e.dataTransfer.getData("text/plain"));
@@ -321,6 +334,7 @@ export default function RecompensasTab({
     setShowDungeonPicker(true);
   }
 
+  /** Submits the dungeon picker selection to add the reward */
   function handlePickerSubmit() {
     if (!pickerDungeon || !dragCharId) return;
     addDungeonReward(pickerDungeon.id, dragCharId, pickerStasis);
@@ -343,6 +357,7 @@ export default function RecompensasTab({
       d.name.toLowerCase().includes(dungeonFilter.toLowerCase()),
   );
 
+  /** Renders a placeholder card for the dungeon picker or the drop zone */
   function renderPlaceholder() {
     if (showDungeonPicker) {
       return (

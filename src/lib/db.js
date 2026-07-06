@@ -1,65 +1,77 @@
 import { supabase } from "@/utils/supabase";
 
+/** Fetches all recycled item IDs and returns them as a Set */
 export async function fetchRecycleIds() {
   const { data, error } = await supabase.from("recycleitems").select("id");
   if (error) throw error;
   return new Set(data.map((row) => row.id));
 }
 
+/** Fetches all characters ordered by id */
 export async function fetchCharacters() {
   const { data, error } = await supabase.from("wakfuchars").select("*").order("id");
   if (error) throw error;
   return data;
 }
 
+/** Fetches all dungeons ordered by id */
 export async function fetchDungeons() {
   const { data, error } = await supabase.from("wakfudungs").select("*").order("id");
   if (error) throw error;
   return data;
 }
 
+/** Fetches all reward entries */
 export async function fetchRewards() {
   const { data, error } = await supabase.from("wakfurewards").select("*");
   if (error) throw error;
   return data;
 }
 
+/** Fetches all builds with their socket data */
 export async function fetchBuilds() {
   const { data, error } = await supabase.from("wakfubuilds").select(`*, wakfubuild_sockets (*)`);
   if (error) throw error;
   return data;
 }
 
+/** Adds an item id to the recycle list */
 export async function addRecycleItem(itemId) {
   const { error } = await supabase.from("recycleitems").insert({ id: parseInt(itemId) });
   if (error) throw error;
 }
 
+/** Removes an item id from the recycle list */
 export async function removeRecycleItem(itemId) {
   const { error } = await supabase.from("recycleitems").delete().eq("id", parseInt(itemId));
   if (error) throw error;
 }
 
+/** Deletes a single reward entry by id */
 export async function deleteReward(id) {
   const { error } = await supabase.from("wakfurewards").delete().eq("id", id);
   if (error) throw error;
 }
 
+/** Deletes all reward entries (reset) */
 export async function resetRewards() {
   const { error } = await supabase.from("wakfurewards").delete().gt("id", 0);
   if (error) throw error;
 }
 
+/** Updates the stasis value for a reward entry */
 export async function updateStasis(id, val) {
   const { error } = await supabase.from("wakfurewards").update({ stasis: val }).eq("id", id);
   if (error) throw error;
 }
 
+/** Updates a character's role (used for Padre Ausente toggle) */
 export async function togglePadreAusente(characterId, newRole) {
   const { error } = await supabase.from("wakfuchars").update({ charrole: newRole }).eq("id", characterId);
   if (error) throw error;
 }
 
+/** Inserts a single dungeon reward for a character */
 export async function addDungeonReward(dungId, charId, stasis) {
   const { error } = await supabase.from("wakfurewards").insert({
     char: parseInt(charId),
@@ -69,6 +81,7 @@ export async function addDungeonReward(dungId, charId, stasis) {
   if (error) throw error;
 }
 
+/** Inserts rewards for a team of characters in a dungeon */
 export async function addDungeonTeamReward(dungId, teamMembers, stasis) {
   const inserts = teamMembers.map((char) => ({
     char: parseInt(char.id),
@@ -79,6 +92,7 @@ export async function addDungeonTeamReward(dungId, teamMembers, stasis) {
   if (error) throw error;
 }
 
+/** Creates a new build with equipment and sockets */
 export async function addBuild(characterId, level, equipment, socketsData, stats) {
   const cleanEq = {};
   for (const [key, val] of Object.entries(equipment)) {
@@ -116,6 +130,7 @@ export async function addBuild(characterId, level, equipment, socketsData, stats
   return build;
 }
 
+/** Updates an existing build, replacing its sockets */
 export async function updateBuild(buildId, level, equipment, socketsData, stats) {
   const cleanEq = {};
   for (const [key, val] of Object.entries(equipment)) {

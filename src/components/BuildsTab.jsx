@@ -10,6 +10,13 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -30,58 +37,45 @@ import {
   getBranchPoints,
   computeEffectiveStats,
 } from "@/lib/buildStats";
+import {
+  ITEM_ICON_BASE,
+  RARITY_ICON_BASE,
+  STAT_ICON_BASE,
+  ICON_BASE,
+  ITEM_TYPE_ICON_BASE,
+} from "@/lib/icons";
+import {
+  SOCKET_COLORS,
+  SOCKET_SLOTS,
+  EQUIPMENT_SLOTS,
+  HAS_ICON,
+  WEAPON_TYPES,
+  TWO_HANDED_TYPES,
+  SECOND_HAND_TYPES,
+  ELEMENTAL_RES_IDS,
+  ELEMENT_RES_ICON,
+  SORT_ORDER,
+  LEVEL_OPTIONS,
+  RARITY_FILTER,
+  STAT_FILTERS,
+  SLOT_TYPE_IDS,
+  CHAR_STAT_ICON,
+  CORE_ACTIONS,
+  MASTERY_IDS,
+  RES_IDS,
+  COMBAT_IDS,
+  SECONDARY_IDS,
+  groupSocketsByEquipment,
+  createDefaultSockets,
+  statSortKey,
+  processStats,
+  getItemTypeIcon,
+} from "@/lib/buildConstants";
+import {
+  computeBuildStatMap,
+  checkItemConditions,
+} from "@/lib/itemConditions";
 import TrashIcon from "@/components/TrashIcon";
-
-const SOCKET_COLORS = {
-  red: "bg-red-500",
-  green: "bg-green-500",
-  blue: "bg-blue-500",
-  white: "bg-gray-100",
-};
-
-/** Equipment slots that can have sockets */
-const SOCKET_SLOTS = new Set([
-  "head",
-  "neck",
-  "chest",
-  "left_hand",
-  "legs",
-  "back",
-  "shoulders",
-  "belt",
-  "right_hand",
-  "first_weapon",
-]);
-
-/** All equipment slots display order and labels */
-const EQUIPMENT_SLOTS = [
-  { key: "head", label: "Casco" },
-  { key: "neck", label: "Amuleto" },
-  { key: "chest", label: "Coraza" },
-  { key: "back", label: "Capa" },
-  { key: "shoulders", label: "Hombreras" },
-  { key: "belt", label: "Cinturón" },
-  { key: "legs", label: "Botas" },
-  { key: "left_hand", label: "Anillo Izq." },
-  { key: "right_hand", label: "Anillo Der." },
-  { key: "first_weapon", label: "Secundaria" },
-  { key: "second_weapon", label: "Principal" },
-  { key: "accessory", label: "Emblema" },
-  { key: "mount", label: "Montura" },
-  { key: "pet", label: "Mascota" },
-  { key: "relic_sublimation", label: "Reliquia" },
-  { key: "epic_sublimation", label: "Épica" },
-];
-
-/** Groups sockets by equipment for quick lookup */
-function groupSocketsByEquipment(sockets = []) {
-  const map = {};
-  for (const s of sockets) {
-    if (!map[s.equipment]) map[s.equipment] = [];
-    map[s.equipment].push(s);
-  }
-  return map;
-}
 
 /** Displays socket dots with level */
 function SocketBadges({ sockets }) {
@@ -104,7 +98,7 @@ function SocketBadges({ sockets }) {
 }
 
 /** Tooltip card shown on hover over equipped item icons */
-function ItemTooltip({ item }) {
+function ItemTooltip({ item, statMap }) {
   const stats = processStats(parseItemStats(item.definition, item.level));
   return (
     <div className="bg-[#163544] rounded p-2 text-sm shadow-xl border border-gray-600 flex flex-col items-start justify-start pointer-events-none">
@@ -126,6 +120,11 @@ function ItemTooltip({ item }) {
               alt=""
               className="h-4 w-auto"
             />
+            <img
+              src={`${ITEM_TYPE_ICON_BASE}${getItemTypeIcon(item.definition?.item?.baseParameters?.itemTypeId ?? item.typeId)}.png`}
+              alt=""
+              className="h-4 w-auto"
+            />
             <span className="text-gray-500 text-xs">Nv.{item.level}</span>
           </div>
           {item.stateName && (
@@ -141,6 +140,23 @@ function ItemTooltip({ item }) {
               )}
             </>
           )}
+          {statMap && (() => {
+            const { conditions } = checkItemConditions(item.name, statMap);
+            if (conditions.length === 0) return null;
+            return (
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                {conditions.map((c, i) => (
+                  <span
+                    key={i}
+                    className={`text-[10px] leading-tight ${c.pass ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {c.pass ? "✓ " : "⚠ "}
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
       <div className="space-y-0.5 mt-1">
@@ -232,6 +248,18 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
       .sort((a, b) => statSortKey(a) - statSortKey(b));
   }, [build, itemLookup, charClass]);
 
+  const buildCardStatMap = useMemo(() => {
+    const items = [];
+    for (const slot of EQUIPMENT_SLOTS) {
+      const itemId = build[slot.key];
+      if (!itemId) continue;
+      const info = itemLookup.get(itemId);
+      if (!info) continue;
+      items.push(info);
+    }
+    return computeBuildStatMap(items, build.stats || {}, build.level);
+  }, [build, itemLookup]);
+
   const charEffects = useMemo(
     () => computeEffectiveStats(build.stats || {}, build.level),
     [build.stats, build.level],
@@ -283,7 +311,7 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
               side="bottom"
               className="p-0 border-0 bg-transparent shadow-none"
             >
-              <ItemTooltip item={info} />
+              <ItemTooltip item={info} statMap={buildCardStatMap} />
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -335,11 +363,6 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
           <hr className="border-gray-700/20 my-1" />
           <div className="grid grid-cols-4 gap-1.5 text-[10px]">
             {(() => {
-              const coreActions = new Set([20, 31, 41, 191, 192]);
-              const masteryIds = new Set([122, 124, 123, 125]);
-              const resIds = new Set([82, 83, 84, 85]);
-              const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
-              const secondaryIds = new Set([26, 71, 149, 180, 181, 988, 1052, 1053, 1055, 1056, 1059, 1060, 1061, 1062, 1063]);
               const core = {};
               const masteryByAction = {};
               const resByElement = {};
@@ -350,9 +373,9 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
               const otherRest = [];
 
               for (const s of buildStats) {
-                if (coreActions.has(s.actionId)) {
+                if (CORE_ACTIONS.has(s.actionId)) {
                   core[s.actionId] = s;
-                } else if (masteryIds.has(s.actionId)) {
+                } else if (MASTERY_IDS.has(s.actionId)) {
                   masteryByAction[s.actionId] = s;
                 } else if (s.actionId === 120) {
                   genericMastery += s.value;
@@ -360,13 +383,13 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
                   for (const e of s.elements) {
                     resByElement[e.element] = e;
                   }
-                } else if (resIds.has(s.actionId)) {
+                } else if (RES_IDS.has(s.actionId)) {
                   resByElement[s.element] = s;
                 } else if (s.actionId === 80) {
                   genericRes += s.value;
-                } else if (combatIds.has(s.actionId)) {
+                } else if (COMBAT_IDS.has(s.actionId)) {
                   combatByAction[s.actionId] = s;
-                } else if (secondaryIds.has(s.actionId)) {
+                } else if (SECONDARY_IDS.has(s.actionId)) {
                   secondaryByAction[s.actionId] = s;
                 } else {
                   otherRest.push(s);
@@ -609,195 +632,9 @@ function FormSocketRow({ equipment, socketIndex, socket, onChange }) {
   );
 }
 
-const ICON_BASE =
-  "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/equipmentDefaults/";
-const ITEM_ICON_BASE =
-  "https://raw.githubusercontent.com/Vertylo/wakassets/main/items/";
-const RARITY_ICON_BASE =
-  "https://raw.githubusercontent.com/Tmktahu/WakfuAssets/main/rarities/";
-const STAT_ICON_BASE =
-  "https://raw.githubusercontent.com/Vertylo/wakassets/main/characteristics/";
 
-const CHAR_STAT_ICON = {
-  hpPercent: "HP",
-  resistElemental: "RES_IN_PERCENT",
-  barrera: "ARMOR",
-  curaPercent: "HEAL_IN_PERCENT",
-  vidaArmadura: "ARMOR",
-  domElemental: "DMG_IN_PERCENT",
-  domMelee: "MELEE_DMG",
-  domDistancia: "RANGED_DMG",
-  pv: "HP",
-  placaje: "TACKLE",
-  esquiva: "DODGE",
-  iniciativa: "INIT",
-  placajeEsquiva: "DODGE",
-  voluntad: "WILLPOWER",
-  critPercent: "CRITICAL_BONUS",
-  anticipacionPercent: "DODGE",
-  domCritico: "CRITICAL_BONUS",
-  domEspalda: "BACKSTAB_BONUS",
-  domBerserker: "BERSERK_DMG",
-  domCuras: "HEAL_IN_PERCENT",
-  resistEspalda: "RES_BACKSTAB",
-  resistCritica: "CRITICAL_RES",
-  pa: "AP",
-  pmDmg: "MP",
-  rangeDmg: "RANGE",
-  pw2: "WP",
-  armorGiven: "ARMOR",
-  dmgPercent: "DMG_IN_PERCENT",
-  resistPercent: "RES_IN_PERCENT",
-  healPercent: "HEAL_IN_PERCENT",
-  indirectDmg: "AOE_DMG",
-};
-const LEVEL_OPTIONS = [
-  20, 35, 50, 65, 80, 95, 110, 125, 140, 155, 170, 185, 200, 215, 230, 245,
-];
-const RARITY_FILTER = [3, 4, 5, 6, 7];
 
-const HAS_ICON = new Set([
-  "head",
-  "neck",
-  "chest",
-  "back",
-  "shoulders",
-  "belt",
-  "legs",
-  "left_hand",
-  "right_hand",
-  "first_weapon",
-  "second_weapon",
-  "accessory",
-  "mount",
-  "pet",
-]);
 
-const WEAPON_TYPES = [
-  101, 108, 110, 111, 112, 113, 114, 115, 117, 223, 253, 254, 537,
-];
-const TWO_HANDED_TYPES = [101, 111, 114, 117, 223, 253];
-const SECOND_HAND_TYPES = [112, 189];
-
-const ELEMENTAL_RES_IDS = new Set([82, 83, 84, 85, 90, 96, 97, 98]);
-
-const ELEMENT_RES_ICON = {
-  Fuego: "RES_FIRE_PERCENT",
-  Agua: "RES_WATER_PERCENT",
-  Tierra: "RES_EARTH_PERCENT",
-  Aire: "RES_AIR_PERCENT",
-};
-
-/**
- * Groups elemental resistance stats into a single row when all
- * elements have the same value (e.g. "10 Resistencia" with 4 element
- * icons). When values differ, each element is shown separately.
- */
-function processStats(stats) {
-  const res = [];
-  const elems = [];
-
-  for (const s of stats) {
-    if (ELEMENTAL_RES_IDS.has(s.actionId) && s.element) {
-      elems.push(s);
-    } else {
-      res.push({ type: "stat", ...s });
-    }
-  }
-
-  if (elems.length > 0) {
-    const allSame = elems.every((e) => e.value === elems[0].value);
-    if (allSame) {
-      res.push({
-        type: "elemental_res",
-        elements: elems,
-        allSameValue: true,
-        singleElement: elems.length === 1,
-      });
-    } else {
-      for (const e of elems) {
-        res.push({ type: "stat", ...e });
-      }
-    }
-  }
-
-  return res;
-}
-
-// Canonical actionId → display sort order (lower = first)
-const SORT_ORDER = {
-  20: 1,
-  31: 2,
-  41: 3,
-  191: 4,
-  192: 4,
-  160: 5,
-  161: 5,
-  175: 6,
-  176: 6,
-  173: 7,
-  174: 7,
-  150: 8,
-  168: 8,
-  875: 9,
-  876: 9,
-  120: 10,
-  130: 10,
-  1068: 10,
-  1052: 11,
-  1059: 11,
-  1053: 12,
-  1060: 12,
-  149: 13,
-  1056: 13,
-  1055: 14,
-  1061: 14,
-  180: 15,
-  181: 15,
-  26: 16,
-  80: 17,
-  90: 17,
-  100: 17,
-  1069: 17,
-  988: 18,
-  1062: 18,
-  71: 19,
-  1063: 19,
-};
-
-function statSortKey(s) {
-  if (s.type === "elemental_res") return 50;
-  return SORT_ORDER[s.actionId] ?? 99;
-}
-
-/** Maps equipment slot keys to the item typeIds that can go in them */
-const SLOT_TYPE_IDS = {
-  head: [134],
-  neck: [120],
-  chest: [136],
-  back: [132],
-  shoulders: [138],
-  belt: [133],
-  legs: [119],
-  left_hand: [103],
-  right_hand: [103],
-  first_weapon: SECOND_HAND_TYPES,
-  second_weapon: [101, 108, 110, 111, 113, 114, 115, 117, 223, 253, 254, 537],
-  accessory: [646],
-  mount: [611],
-  pet: [582, 849],
-  relic_sublimation: [812],
-  epic_sublimation: [812],
-};
-
-/** Creates default socket state for a socketable equipment slot */
-function createDefaultSockets() {
-  return Array.from({ length: 4 }, (_, i) => ({
-    slot_index: i + 1,
-    level: 0,
-    color: "red",
-  }));
-}
 
 /** Form drawer for creating/editing a build */
 function BuildFormDrawer({
@@ -822,6 +659,9 @@ function BuildFormDrawer({
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [search, setSearch] = useState("");
   const [errorSlots, setErrorSlots] = useState(new Set());
+  const [filterLevel, setFilterLevel] = useState(200);
+  const [filterRarities, setFilterRarities] = useState(new Set(RARITY_FILTER));
+  const [filterStats, setFilterStats] = useState(new Set());
 
   useEffect(() => {
     if (!build) return;
@@ -898,32 +738,62 @@ function BuildFormDrawer({
     return idx > 0 ? LEVEL_OPTIONS[idx - 1] + 1 : 0;
   }, [level]);
 
+  const filterLevelMin = useMemo(() => {
+    const idx = LEVEL_OPTIONS.indexOf(filterLevel);
+    return idx > 0 ? LEVEL_OPTIONS[idx - 1] + 1 : 0;
+  }, [filterLevel]);
+
+  const buildStatMap = useMemo(() => {
+    const equippedItems = EQUIPMENT_SLOTS.filter((s) => equipment[s.key])
+      .map((s) => {
+        const info = itemLookup?.get(equipment[s.key]);
+        return info || null;
+      })
+      .filter(Boolean);
+    return computeBuildStatMap(equippedItems, allocStats, parseInt(level) || 1);
+  }, [equipment, allocStats, level, itemLookup]);
+
   /**
    * Item search/filter algorithm:
    *   1. Match slot typeId (head→134, mount→611, etc.)
    *   2. Exclude already-equipped items (recycleItemIds)
-   *   3. Mounts/pets bypass rarity and level range filters
+   *   3. Mounts/pets bypass rarity, level range, and stat filters
    *   4. Sublimation slots (relic/epic) matched by sublimation params
-   *   5. Sort by level desc, then name asc; capped at 50 results
+   *   5. Filter by selected rarities (multi-select)
+   *   6. Filter by item level range (filterLevel)
+   *   7. Filter by stat filters — item must have at least one effect with
+   *      a matching actionId
+   *   8. Sort by level desc, then name asc; capped at 50 results
    */
   const filteredItems = useMemo(() => {
-    if (!search || !allItems.length || !selectedSlot) return [];
+    if (!allItems.length || !selectedSlot) return [];
     const allowedTypes = SLOT_TYPE_IDS[selectedSlot];
     if (!allowedTypes) return [];
-    const q = search.toLowerCase();
+    const q = search?.toLowerCase() || "";
+    const targetActionIds = new Set();
+    if (filterStats.size > 0) {
+      for (const sf of STAT_FILTERS) {
+        if (filterStats.has(sf.id)) {
+          for (const aid of sf.actionIds) {
+            targetActionIds.add(aid);
+          }
+        }
+      }
+    }
     return allItems
       .filter(
         (item) =>
           !recycleItemIds.has(item.id) &&
           (selectedSlot === "mount" ||
             selectedSlot === "pet" ||
-            RARITY_FILTER.includes(item.rarity)) &&
+            filterRarities.size === 0 ||
+            filterRarities.has(item.rarity)) &&
           (selectedSlot === "mount" ||
             selectedSlot === "pet" ||
             selectedSlot === "relic_sublimation" ||
             selectedSlot === "epic_sublimation" ||
-            (item.level >= levelMin && item.level <= level)) &&
-          item.name.toLowerCase().includes(q) &&
+            (item.level >= filterLevelMin && item.level <= filterLevel)) &&
+          (!q || item.name.toLowerCase().includes(q)) &&
           allowedTypes.includes(
             item.definition?.item?.baseParameters?.itemTypeId ?? item.typeId,
           ) &&
@@ -931,11 +801,17 @@ function BuildFormDrawer({
             ? item.sublimationParams?.isRelic === true
             : selectedSlot === "epic_sublimation"
               ? item.sublimationParams?.isEpic === true
-              : true),
+              : true) &&
+          (targetActionIds.size === 0 ||
+            selectedSlot === "mount" ||
+            selectedSlot === "pet" ||
+            item.definition?.equipEffects?.some((ee) =>
+              targetActionIds.has(ee.effect?.definition?.actionId),
+            )),
       )
       .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
       .slice(0, 50);
-  }, [search, allItems, level, selectedSlot, recycleItemIds]);
+  }, [search, allItems, filterLevel, filterLevelMin, filterRarities, filterStats, selectedSlot, recycleItemIds]);
 
   function handleEqChange(key, value) {
     setEquipment((prev) => ({ ...prev, [key]: value }));
@@ -1080,6 +956,29 @@ function BuildFormDrawer({
       return;
     }
 
+    const currentEquipped = EQUIPMENT_SLOTS.filter(
+      (s) => s.key !== selectedSlot && equipment[s.key],
+    )
+      .map((s) => {
+        const info = itemLookup?.get(equipment[s.key]);
+        return info || null;
+      })
+      .filter(Boolean);
+    const statsWithoutSlot = computeBuildStatMap(
+      currentEquipped,
+      allocStats,
+      parseInt(level) || 1,
+    );
+    const { pass, failures } = checkItemConditions(item.name, statsWithoutSlot);
+    if (!pass) {
+      for (const f of failures) {
+        toast.error(
+          `${item.name}: requiere ${f.label} (tienes ${f.current})`,
+        );
+      }
+      return;
+    }
+
     setErrorSlots(new Set());
 
     let eqUpdate = { ...equipment, [selectedSlot]: item.id };
@@ -1129,26 +1028,30 @@ function BuildFormDrawer({
           <h3 className="text-lg font-semibold text-orange-300">
             {build ? "Editar build" : "Crear build"} para {character.char}
           </h3>
-          <DrawerClose className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none">
-            ×
-          </DrawerClose>
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-400">Nivel:</label>
+              <Select
+                value={String(level)}
+                onValueChange={(v) => setLevel(parseInt(v))}
+              >
+                <SelectTrigger className="h-7 text-sm w-16">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVEL_OPTIONS.map((l) => (
+                    <SelectItem key={l} value={String(l)}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <DrawerClose className="text-gray-400 hover:text-white text-xl cursor-pointer leading-none">
+              ×
+            </DrawerClose>
+          </div>
         </div>
 
         <div className="flex flex-col min-h-0 flex-1 px-6 pb-6 pt-4 gap-4">
-          <div className="flex items-center gap-3 shrink-0">
-            <label className="text-sm text-gray-400">Nivel:</label>
-            <select
-              value={level}
-              onChange={(e) => setLevel(parseInt(e.target.value))}
-              className="bg-[#0d2733] border border-gray-600 rounded text-sm py-1 px-2"
-            >
-              {LEVEL_OPTIONS.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="flex flex-wrap gap-1.5 shrink-0">
             {EQUIPMENT_SLOTS.map((slot) => {
@@ -1159,10 +1062,7 @@ function BuildFormDrawer({
                   key={slot.key}
                   onClick={() => {
                     setSelectedSlot(slot.key);
-                    const item = allItems.find(
-                      (i) => i.id === equipment[slot.key],
-                    );
-                    setSearch(item?.name || "");
+                    setSearch("");
                     setErrorSlots(new Set());
                   }}
                   title={slot.label}
@@ -1202,29 +1102,107 @@ function BuildFormDrawer({
             })}
           </div>
 
-          {activeSlot && (
-            <div className="border border-gray-700/60 rounded p-3 flex flex-col min-h-0 flex-1 gap-2">
-              <label className="text-xs text-gray-400 font-medium shrink-0">
-                {activeSlot.label}
-              </label>
+          <div className="flex items-center gap-4 shrink-0 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-400">Nivel filtro:</label>
+              <Select
+                value={String(filterLevel)}
+                onValueChange={(v) => setFilterLevel(parseInt(v))}
+              >
+                <SelectTrigger className="h-6 text-xs w-14">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEVEL_OPTIONS.map((l) => (
+                    <SelectItem key={l} value={String(l)}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400 mr-1">Rareza:</span>
+              {[3, 4, 7, 6, 5].map((r) => {
+                const active = filterRarities.has(r);
+                return (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setFilterRarities((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(r)) {
+                          next.delete(r);
+                        } else {
+                          next.add(r);
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`flex items-center justify-center size-7 transition-all cursor-pointer ${active ? "bg-orange-400/30" : "opacity-40 hover:opacity-80"}`}
+                  >
+                    <img
+                      src={`${RARITY_ICON_BASE}${r}.png`}
+                      alt={`Raridad ${r}`}
+                      className="h-4 w-auto"
+                    />
+                  </button>
+                );
+              })}
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar objeto..."
-                className="w-full bg-[#0d2733] border border-gray-600 rounded text-sm py-1.5 px-2 shrink-0"
+                className="flex-1 min-w-32 bg-[#0d2733] border border-gray-600 rounded text-xs py-1 px-2"
               />
-              {search && filteredItems.length > 0 && (
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0 flex-wrap">
+            {STAT_FILTERS.map((sf) => {
+              const active = filterStats.has(sf.id);
+              return (
+                <button
+                  key={sf.id}
+                  onClick={() => {
+                    setFilterStats((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(sf.id)) {
+                        next.delete(sf.id);
+                      } else {
+                        next.add(sf.id);
+                      }
+                      return next;
+                    });
+                  }}
+                  className={`flex items-center gap-1 h-7 px-1.5 text-[11px] transition-all cursor-pointer ${active ? "bg-orange-400/30" : "opacity-40 hover:opacity-80"}`}
+                >
+                  <img
+                    src={`${STAT_ICON_BASE}${sf.icon}.png`}
+                    alt={sf.label}
+                    className="h-3.5 w-auto"
+                  />
+                  <span>{sf.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeSlot && (
+            <div className="border border-gray-700/60 rounded p-3 flex flex-col min-h-0 flex-1 gap-2">
+              {filteredItems.length > 0 && (
                 <div className="min-h-0 flex-1 overflow-y-auto vertical-scroll border border-gray-700/60 rounded grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 p-1.5">
                   {filteredItems.map((item) => {
                     const stats = processStats(
                       parseItemStats(item.definition, item.level),
                     );
+                    const isEquipped = item.id === equipment[selectedSlot];
                     return (
                       <button
                         key={item.id}
                         onClick={() => handleSelectItem(item)}
-                        className="w-full text-left p-2 text-sm hover:bg-white/10 bg-[#163544] cursor-pointer rounded transition-colors flex flex-col items-start justify-start"
+                        className={`w-full text-left p-2 text-sm hover:bg-white/10 cursor-pointer rounded transition-colors flex flex-col items-start justify-start ${isEquipped ? "bg-[#163544] ring-1 ring-orange-400" : "bg-[#163544]"}`}
                       >
                         <div className="flex gap-2 items-start w-full">
                           <div className="relative shrink-0">
@@ -1258,6 +1236,11 @@ function BuildFormDrawer({
                                 alt=""
                                 className="h-4 w-auto"
                               />
+                              <img
+                                src={`${ITEM_TYPE_ICON_BASE}${getItemTypeIcon(item.definition?.item?.baseParameters?.itemTypeId ?? item.typeId)}.png`}
+                                alt=""
+                                className="h-4 w-auto"
+                              />
                               <span className="text-gray-500 text-xs">
                                 Nv.{item.level}
                               </span>
@@ -1275,6 +1258,26 @@ function BuildFormDrawer({
                                 }}
                               />
                             )}
+                            {(() => {
+                              const { conditions } = checkItemConditions(
+                                item.name,
+                                buildStatMap,
+                              );
+                              if (conditions.length === 0) return null;
+                              return (
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  {conditions.map((c, i) => (
+                                    <span
+                                      key={i}
+                                      className={`text-[10px] leading-tight ${c.pass ? "text-green-400" : "text-red-400"}`}
+                                    >
+                                      {c.pass ? "✓ " : "⚠ "}
+                                      {c.label}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="space-y-0.5 mt-1">
@@ -1379,11 +1382,6 @@ function BuildFormDrawer({
                 const nonMerge = Object.entries(charEffects).filter(
                   ([k, v]) => v !== null && nonMergeKeys.has(k),
                 );
-                const coreActions = new Set([20, 31, 41, 191, 192]);
-                const masteryIds = new Set([122, 124, 123, 125]);
-                const resIds = new Set([82, 83, 84, 85]);
-                const combatIds = new Set([150, 171, 166, 177, 175, 875, 160, 173, 162]);
-                const secondaryIds = new Set([26, 71, 149, 180, 181, 988, 1052, 1053, 1055, 1056, 1059, 1060, 1061, 1062, 1063]);
                 const core = {};
                 const masteryByAction = {};
                 const resByElement = {};
@@ -1393,9 +1391,9 @@ function BuildFormDrawer({
                 const secondaryByAction = {};
                 const otherRest = [];
                 for (const s of merged) {
-                  if (coreActions.has(s.actionId)) {
+                  if (CORE_ACTIONS.has(s.actionId)) {
                     core[s.actionId] = s;
-                  } else if (masteryIds.has(s.actionId)) {
+                  } else if (MASTERY_IDS.has(s.actionId)) {
                     masteryByAction[s.actionId] = s;
                   } else if (s.actionId === 120) {
                     genericMastery += s.value;
@@ -1403,13 +1401,13 @@ function BuildFormDrawer({
                     for (const e of s.elements) {
                       resByElement[e.element] = e;
                     }
-                  } else if (resIds.has(s.actionId)) {
+                  } else if (RES_IDS.has(s.actionId)) {
                     resByElement[s.element] = s;
                   } else if (s.actionId === 80) {
                     genericRes += s.value;
-                  } else if (combatIds.has(s.actionId)) {
+                  } else if (COMBAT_IDS.has(s.actionId)) {
                     combatByAction[s.actionId] = s;
-                  } else if (secondaryIds.has(s.actionId)) {
+                  } else if (SECONDARY_IDS.has(s.actionId)) {
                     secondaryByAction[s.actionId] = s;
                   } else {
                     otherRest.push(s);
@@ -1960,7 +1958,7 @@ export default function BuildsTab() {
                   </div>
                   <div className="flex flex-col gap-2 flex-1 overflow-y-auto vertical-scroll min-h-0 pr-1">
                     {charBuilds ? (
-                      charBuilds.map((build) => (
+                      charBuilds.slice().sort((a, b) => a.level - b.level).map((build) => (
                         <BuildCard
                           key={build.id}
                           build={build}

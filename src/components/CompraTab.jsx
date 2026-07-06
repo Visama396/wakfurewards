@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { toast } from "sonner";
+import { JOBS, MAPA_CATEGORIAS } from "@/lib/compraConstants";
 import CraftFilter from "./CraftFilter";
 import CraftCard from "./CraftCard";
 import MaterialSummary from "./MaterialSummary";
@@ -13,14 +14,6 @@ export default function CompraTab() {
   const [craftItems, setCraftItems] = useState([]);
   const [materialsMap, setMaterialsMap] = useState({});
 
-  const jobs = [
-    "Sastre",
-    "Marroquinero",
-    "Armero",
-    "Maestro de Armas",
-    "Joyero",
-  ];
-
   useEffect(() => {
     async function loadCraftData() {
       try {
@@ -32,34 +25,29 @@ export default function CompraTab() {
         if (error) throw error;
 
         if (crafts) {
-          const procesados = crafts.map((c) => {
-            return {
-              id: c.id,
-              itemId: c.item_id,
-              name: c.name,
-              level: c.level,
-              job: (c.job || "Sastre").trim(),
-              quantity: c.quantity,
-              isPriority: c.is_priority,
-              materials: (c.wakfucraft_materials || []).map((m) => ({
-                id: m.id,
-                material_item_id: m.material_item_id,
-                material_name: m.material_name,
-                qty_needed: m.qty_needed,
-                is_rare: m.is_rare,
-                resourceType: m.resource_type,
-              })),
-            };
-          });
+          const procesados = crafts.map((c) => ({
+            id: c.id,
+            itemId: c.item_id,
+            name: c.name,
+            level: c.level,
+            job: (c.job || "Sastre").trim(),
+            quantity: c.quantity,
+            isPriority: c.is_priority,
+            materials: (c.wakfucraft_materials || []).map((m) => ({
+              id: m.id,
+              material_item_id: m.material_item_id,
+              material_name: m.material_name,
+              qty_needed: m.qty_needed,
+              is_rare: m.is_rare,
+              resourceType: m.resource_type,
+            })),
+          }));
 
           setCraftItems(procesados);
           calcularMaterialesGlobales(procesados);
         }
       } catch (err) {
-        console.error(
-          "Error al cargar datos del panel de crafteo:",
-          err.message,
-        );
+        console.error("Error al cargar datos del panel de crafteo:", err.message);
       }
     }
 
@@ -79,6 +67,7 @@ export default function CompraTab() {
     };
   }, []);
 
+  /** Aggregates rare materials across all craft orders and returns a global sum */
   function calcularMaterialesGlobales(items = []) {
     const acumulador = {};
     items.forEach((item) => {
@@ -100,6 +89,7 @@ export default function CompraTab() {
     setMaterialsMap(acumulador);
   }
 
+  /** Toggles the priority flag on a craft order */
   async function handleTogglePriority(item) {
     await supabase
       .from("wakfucrafts")
@@ -107,6 +97,7 @@ export default function CompraTab() {
       .eq("id", item.id);
   }
 
+  /** Deletes a craft order and shows a toast notification */
   async function handleDeleteCraft(id) {
     const { error } = await supabase.from("wakfucrafts").delete().eq("id", id);
     if (error) {
@@ -116,39 +107,11 @@ export default function CompraTab() {
     }
   }
 
+  /** Creates a new craft order with materials, auto-detecting the job from item typeId */
   async function handleCreateCraftOrder(datosModal) {
     try {
       const typeId = parseInt(datosModal.typeId);
-      let oficioReal = "Sastre";
-
-      const mapaCategorias = {
-        103: "Joyero",
-        120: "Joyero",
-        132: "Sastre",
-        134: "Sastre",
-        138: "Sastre",
-        119: "Marroquinero",
-        133: "Marroquinero",
-        218: "Marroquinero",
-        136: "Armero",
-        189: "Armero",
-        101: "Maestro de Armas",
-        108: "Maestro de Armas",
-        110: "Maestro de Armas",
-        111: "Maestro de Armas",
-        112: "Maestro de Armas",
-        113: "Maestro de Armas",
-        114: "Maestro de Armas",
-        115: "Maestro de Armas",
-        117: "Maestro de Armas",
-        223: "Maestro de Armas",
-        253: "Maestro de Armas",
-        254: "Maestro de Armas",
-      };
-
-      if (mapaCategorias[typeId]) {
-        oficioReal = mapaCategorias[typeId];
-      }
+      const oficioReal = MAPA_CATEGORIAS[typeId] || "Sastre";
 
       const { data: nuevoCraft, error: errorCraft } = await supabase
         .from("wakfucrafts")
@@ -201,7 +164,7 @@ export default function CompraTab() {
               Lista de la Compra
             </h2>
             <CraftFilter
-              jobs={jobs}
+              jobs={JOBS}
               currentFilter={jobFilter}
               onFilter={setJobFilter}
             />

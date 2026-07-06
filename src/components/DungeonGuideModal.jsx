@@ -21,6 +21,7 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
   const tooltipRef = useRef(null);
   const hideTimer = useRef(null);
 
+  /** Shows the spell tooltip on hover over a .spell-ref element */
   const show = useCallback((e) => {
     const ref = e.target.closest(".spell-ref");
     if (!ref) return;
@@ -35,12 +36,14 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
     }
   }, []);
 
+  /** Hides the spell tooltip after a short delay */
   const hide = useCallback(() => {
     hideTimer.current = setTimeout(() => {
       if (tooltipRef.current) tooltipRef.current.style.display = "none";
     }, 150);
   }, []);
 
+  /** Cancels the hide timer when hovering over the tooltip itself */
   const cancelHide = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
   }, []);
@@ -67,7 +70,6 @@ export default function DungeonGuideModal({ dungeonName, html, onClose }) {
       {/*
        * Portal al body para que el tooltip no se corte por el overflow-y-auto del contenido.
        * Se posiciona con fixed y transform: translateX(-50%) para centrar horizontalmente.
-       * Tiene pointer-events-auto para permitir hover sobre el tooltip sin que desaparezca.
        */}
       {createPortal(
         <div

@@ -44,7 +44,7 @@ const STAT_ICON_MAP = {
   184: "BLOCK",
   191: "WP",
   192: "WP",
-  875: "DODGE",
+  875: "BLOCK",
   876: "DODGE",
   988: "CRITICAL_RES",
   1050: "AOE_DMG",

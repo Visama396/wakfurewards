@@ -1,12 +1,11 @@
+import { ITEM_ICON_BASE } from "@/lib/icons";
 import itemsLocal from "../data/items.json";
 
+/** Sidebar panel showing aggregated rare materials across all craft orders */
 export default function MaterialSummary({ materials = [] }) {
   const materialList = [
     ...(Array.isArray(materials) ? materials : Object.values(materials || {})),
   ].sort((a, b) => b.total - a.total);
-
-  const ITEM_ICON_BASE =
-    "https://raw.githubusercontent.com/Vertylo/wakassets/main/items/";
 
   return (
     <div className="flex flex-col h-full text-white w-full min-h-0">
@@ -17,7 +16,6 @@ export default function MaterialSummary({ materials = [] }) {
           </div>
         ) : (
           materialList.map((mat) => {
-            // Buscamos el gfxId exacto del material acumulado en el JSON
             const infoMatLocal = itemsLocal.find(
               (it) => (it.definition?.item?.id || it.id) === mat.id,
             );
