@@ -410,7 +410,17 @@ function BuildCard({ build, itemLookup, onEdit, charClass }) {
               addCore(20, "PdV");
               addCore(31, "PA");
               addCore(41, "PM");
-              addCore(191, "PW");
+              if (charClass === "hiper") {
+                const s = core[191];
+                if (s) cells.push(
+                  <div key="core-191" className="flex items-center gap-0.5 leading-tight p-1 rounded bg-[#091e28]">
+                    <img src={`${STAT_ICON_BASE}HUPPERMAGE_RESOURCE.png`} alt="" className="size-3.5 shrink-0" />
+                    <span>QB {s.value * 75}</span>
+                  </div>
+                );
+              } else {
+                addCore(191, "PW");
+              }
 
               const elemOrder = ["Fuego", "Agua", "Tierra", "Aire"];
               const actionFor = (el) =>
@@ -1126,6 +1136,39 @@ function BuildFormDrawer({
           {drawerTab === "equipamiento" && (
             <>
           <div className="flex items-center gap-4 shrink-0 flex-wrap">
+            <div className="mb-0">
+              <label className="text-[10px] text-gray-500 block mb-1">Prioridad de Elementos</label>
+              <div className="flex gap-1">
+                {elementOrder.map((el, i) => (
+                  <div
+                    key={el}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", i.toString());
+                      e.currentTarget.classList.add("opacity-40");
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.add("ring-1", "ring-orange-400");
+                    }}
+                    onDragLeave={(e) => {
+                      e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove("ring-1", "ring-orange-400");
+                      handleReorderElements(parseInt(e.dataTransfer.getData("text/plain")), i);
+                    }}
+                    onDragEnd={(e) => {
+                      e.currentTarget.classList.remove("opacity-40", "ring-1", "ring-orange-400");
+                    }}
+                    className={`flex-1 text-center px-1 py-1 rounded cursor-grab active:cursor-grabbing text-[10px] font-medium ${ELEMENT_COLORS[el]} bg-[#091e28] border border-transparent transition-all`}
+                  >
+                    {el}
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-400">Nivel filtro:</label>
               <Select
@@ -1398,39 +1441,6 @@ function BuildFormDrawer({
                   </button>
                 ))}
               </div>
-              <div className="mb-2">
-                <label className="text-[10px] text-gray-500 block mb-1">Prioridad de Elementos</label>
-                <div className="flex gap-1">
-                  {elementOrder.map((el, i) => (
-                    <div
-                      key={el}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", i.toString());
-                        e.currentTarget.classList.add("opacity-40");
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.add("ring-1", "ring-orange-400");
-                      }}
-                      onDragLeave={(e) => {
-                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.remove("ring-1", "ring-orange-400");
-                        handleReorderElements(parseInt(e.dataTransfer.getData("text/plain")), i);
-                      }}
-                      onDragEnd={(e) => {
-                        e.currentTarget.classList.remove("opacity-40", "ring-1", "ring-orange-400");
-                      }}
-                      className={`flex-1 text-center px-1 py-1 rounded cursor-grab active:cursor-grabbing text-[10px] font-medium ${ELEMENT_COLORS[el]} bg-[#091e28] border border-transparent transition-all`}
-                    >
-                      {el}
-                    </div>
-                  ))}
-                </div>
-              </div>
               {(() => {
                 const curBranch = BRANCHES.find((b) => b.key === selectedBranch);
                 const totalPts = branchPoints[curBranch?.key] || 0;
@@ -1558,7 +1568,17 @@ function BuildFormDrawer({
                 addCore(20, "PdV");
                 addCore(31, "PA");
                 addCore(41, "PM");
-                addCore(191, "PW");
+                if (character.class === "hiper") {
+                  const s = core[191];
+                  if (s) previewCells.push(
+                    <div key="core-191" className="flex items-center gap-1 leading-tight p-1 rounded bg-[#091e28]">
+                      <img src={`${STAT_ICON_BASE}HUPPERMAGE_RESOURCE.png`} alt="" className="size-4 shrink-0" />
+                      <span>QB {s.value * 75}</span>
+                    </div>
+                  );
+                } else {
+                  addCore(191, "PW");
+                }
                 const elemOrder = ["Fuego", "Agua", "Tierra", "Aire"];
                 const actionFor = (el) =>
                   el === "Fuego" ? 122 : el === "Agua" ? 124 : el === "Tierra" ? 123 : 125;
