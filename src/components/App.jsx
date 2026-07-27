@@ -13,7 +13,7 @@ import CompraTab from "@/components/CompraTab";
 const SPREADSHEET_ID = "1YXdxmQC9U3Ux7AuNnT8Cm3DR7kp1YYHenWuU3eQ5wbY";
 const SPREADSHEET_SHEET = "[ES] Previsión";
 const SPREADSHEET_API_KEY = import.meta.env.PUBLIC_VITE_GOOGLESHEET_KEY;
-
+//Visama es pete
 const SPREADSHEET_TO_APP = {
   "Guarida de los Tejaroxores": "Cojonidas 🍯🦡",
   "Volcán Or'Hodruin": "Señor de la Llama 🦙🌋",
@@ -125,7 +125,8 @@ export default function App() {
           <button
             className="bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors text-white px-4 py-1 rounded hover:cursor-pointer"
             onClick={() => {
-              if (window.confirm("¿Resetear todas las recompensas?")) resetRewards();
+              if (window.confirm("¿Resetear todas las recompensas?"))
+                resetRewards();
             }}
           >
             Resetear
